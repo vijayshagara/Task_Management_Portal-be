@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize-typescript';
 import dotenv from 'dotenv';
 import path from 'path';
+import HeatSchedule from '../models/heat-schedules.model';
 
 dotenv.config();
 
@@ -11,6 +12,9 @@ const sequelize = new Sequelize({
   host: process.env.DB_HOST || 'ep-polished-river-a1vq0bs5-pooler.ap-southeast-1.aws.neon.tech',
   port: parseInt(process.env.DB_PORT || '5432'),
   dialect: 'postgres',
+  models: [
+    HeatSchedule,
+  ],
   dialectOptions: {
     ssl: {
       require: true,
@@ -23,7 +27,7 @@ const sequelize = new Sequelize({
     acquire: 30000,
     idle: 10000,
   },
-  models: [path.join(__dirname, '../models/*.model.ts')], // Explicit path
+  // models: [path.join(__dirname, '../models/*.model.ts')], // Explicit path
   logging: false,
 });
 
