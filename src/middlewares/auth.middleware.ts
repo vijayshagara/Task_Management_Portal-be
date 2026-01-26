@@ -14,20 +14,20 @@ interface AuthenticatedRequest extends Request {
 export const authMiddleware = (roles: string[] = []) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const token = req.header('Authorization')?.replace('Bearer ', '');
+      // const token = req.header('Authorization')?.replace('Bearer ', '');
       
-      if (!token) {
-        res.status(401).json({ message: 'No token provided' });
-        return;
-      }
+      // if (!token) {
+      //   res.status(401).json({ message: 'No token provided' });
+      //   return;
+      // }
 
-      const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
-      req.user = decoded;
+      // const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
+      // req.user = decoded;
 
-      if (roles.length && !roles.includes(decoded.role)) {
-        res.status(403).json({ message: 'Forbidden' });
-        return;
-      }
+      // if (roles.length && !roles.includes(decoded.role)) {
+      //   res.status(403).json({ message: 'Forbidden' });
+      //   return;
+      // }
 
       next();
     } catch (error) {

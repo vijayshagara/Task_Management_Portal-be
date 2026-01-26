@@ -1,8 +1,8 @@
 {
   "development": {
-    "username": "postgres",
+    "username": "neondb_owner",
     "password": "postgres",
-    "database": "postgres",
+    "database": "neondb",
     "host": "127.0.0.1",
     "dialect": "postgres"
   },
