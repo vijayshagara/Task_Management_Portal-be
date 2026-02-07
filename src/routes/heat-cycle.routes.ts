@@ -20,7 +20,7 @@ router.get('/cow/:cowId', authMiddleware(['admin']), (req, res, next) => {
 });
 
 // Create heat cycle
-router.post('/', authMiddleware(['admin']), (req, res, next) => {
+router.post('/', (req, res, next) => {
   HeatCycleController.createHeatCycle(req, res).catch(next);
 });
 

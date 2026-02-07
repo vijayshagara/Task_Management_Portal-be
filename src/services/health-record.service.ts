@@ -2,6 +2,8 @@ import HealthRecord from '../models/health-record.model';
 import { Cow } from '../models/cow.model';
 import { z } from 'zod';
 import sequelize from '../config/database';
+import { sendEmail } from '../services1/notification.service';
+import CowHealthStatus from '../models/cow-health-status.model';
 
 export class HealthRecordService {
 
@@ -26,6 +28,17 @@ export class HealthRecordService {
     issue: z.string().optional(),
     recordedAt: z.coerce.date().optional(),
   });
+
+  private static getFeverStatus(
+    temperature?: number
+  ): 'NORMAL' | 'MILD_FEVER' | 'HIGH_FEVER' {
+
+    if (temperature == null) return 'NORMAL';
+    if (temperature >= 40) return 'HIGH_FEVER';
+    if (temperature >= 39.3) return 'MILD_FEVER';
+    return 'NORMAL';
+  }
+
 
   // --------------------
   // GET ALL HEALTH RECORDS
@@ -89,16 +102,51 @@ export class HealthRecordService {
 
     const validatedData = this.createSchema.parse(data);
 
-    return sequelize.transaction(async transaction => {
+    return sequelize.transaction(async (transaction) => {
 
+      // 1️⃣ Validate cow
       const cow = await Cow.findByPk(validatedData.cowId, { transaction });
       if (!cow) {
-        throw new Error('Cow not found');
+        throw new Error('Cow not found222222222');
       }
 
-      return HealthRecord.create(validatedData, { transaction });
+      // 2️⃣ Insert history record
+      const healthRecord = await HealthRecord.create(validatedData, { transaction });
+
+      // 3️⃣ Determine fever status
+      const feverStatus = this.getFeverStatus(validatedData.temperature);
+
+      // 4️⃣ Read previous status (for alert control)
+      const previousStatus = await CowHealthStatus.findByPk(cow.id, { transaction });
+
+      // 5️⃣ UPSERT latest health snapshot
+      await CowHealthStatus.upsert(
+        {
+          cowId: cow.id,
+          latestTemperature: validatedData.temperature ?? null,
+          feverStatus,
+          lastCheckedAt: validatedData.recordedAt
+            ? new Date(validatedData.recordedAt)
+            : new Date(),
+        },
+        { transaction }
+      );
+
+      // 6️⃣ Send alert ONLY on status change + fever
+      if (
+        feverStatus !== 'NORMAL' &&
+        previousStatus?.feverStatus !== feverStatus
+      ) {
+        sendEmail(cow.id, cow.name, feverStatus).catch(err => {
+          console.error('Error sending fever alert email:', err);
+        });
+      }
+
+      return healthRecord;
     });
   }
+
+
 
   // --------------------
   // UPDATE

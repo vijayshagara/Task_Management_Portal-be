@@ -12,9 +12,11 @@ import { Cow } from './cow.model';
 
 export enum HeatScheduleStatus {
   SCHEDULED = 'scheduled',
+  SENDING = 'sending',
   SENT = 'sent',
-  CANCELLED = 'cancelled',
+  FAILED = 'failed',
 }
+
 
 @Table({
   tableName: 'heat_schedules',

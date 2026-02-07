@@ -88,14 +88,22 @@ export class HeatCycleService {
       notes?: string;
     }
   ): Promise<HeatCycle> {
-
+    
+    
     const validatedData = this.createSchema.parse(data);
-
+    
     return sequelize.transaction(async transaction => {
-
+      
       const cow = await Cow.findByPk(validatedData.cowId, { transaction });
+      console.log('VALIDATED DATA:', validatedData);
+
+      console.log('0000000000000000000000000');
+      console.log("🚀 ~ HeatCycleService ~ createHeatCycle ~ cow:", cow)
       if (!cow) {
-        throw new Error('Cow not found');
+
+        console.log('111111111111111111111111111');
+        
+        throw new Error('Cow not found11111111111');
       }
 
       // ❗ Prevent multiple active cycles
@@ -123,7 +131,8 @@ export class HeatCycleService {
       await HeatSchedulerService.scheduleHeatReminder(
         cycle.id,
         cycle.cowId,
-        cycle.heatStartDate
+        cycle.heatStartDate,
+        transaction
       );
 
       return cycle;

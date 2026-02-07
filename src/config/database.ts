@@ -6,6 +6,7 @@ import HealthRecord from '../models/health-record.model';
 import HeatCycle from '../models/heat-cycle.model';
 import Task from '../models/task.model';
 import User from '../models/user.model';
+import CowHealthStatus from '../models/cow-health-status.model';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ const sequelize = new Sequelize({
     HeatCycle,
     Task,
     User,
+    CowHealthStatus
   ],
   dialectOptions: {
     ssl: {

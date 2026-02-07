@@ -56,13 +56,13 @@ export default class HeatCycle extends Model {
     name: 'idx_heat_cycle_cow_start',
   })
   @Column({
-    type: DataType.DATEONLY,
+    type: DataType.DATE,
     allowNull: false,
   })
   declare heatStartDate: Date;
 
   @Column({
-    type: DataType.DATEONLY,
+    type: DataType.DATE,
     allowNull: true,
   })
   declare heatEndDate: Date | null;
@@ -99,7 +99,7 @@ export default class HeatCycle extends Model {
   // NEXT HEAT
   // --------------------
   @Column({
-    type: DataType.DATEONLY,
+    type: DataType.DATE,
     allowNull: true,
   })
   declare nextExpectedHeat: Date | null;

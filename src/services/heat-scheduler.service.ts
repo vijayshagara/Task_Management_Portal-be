@@ -1,68 +1,52 @@
 import HeatSchedule, {
   HeatScheduleStatus,
 } from '../models/heat-schedules.model';
-import { heatNotificationQueue } from '../queues/heat-notification.queue';
-import sequelize from '../config/database';
+import { Transaction } from 'sequelize';
 
 export class HeatSchedulerService {
 
-  // Industry-accepted heat window
-  private static readonly HEAT_ALERT_DAYS = [18, 20, 21, 22, 23];
+  private static readonly HEAT_ALERT_DAYS = [18,19, 20, 21, 22, 23];
 
   public static async scheduleHeatReminder(
     heatCycleId: string,
     cowId: string,
-    heatStartDate: Date
+    heatStartDate: Date,
+    transaction: Transaction
   ): Promise<void> {
 
-    await sequelize.transaction(async transaction => {
+    for (const day of this.HEAT_ALERT_DAYS) {
 
-      for (const day of this.HEAT_ALERT_DAYS) {
+      // 🔒 Always normalize date (extra safety)
+      const startDate = new Date(heatStartDate);
 
-        const scheduledAt = new Date(
-          heatStartDate.getTime() + day * 24 * 60 * 60 * 1000
-        );
+      const scheduledAt = new Date(
+        startDate.getTime() + day * 24 * 60 * 60 * 1000
+      );
 
-        // Skip past alerts
-        if (scheduledAt.getTime() <= Date.now()) continue;
+      // Skip past alerts
+      if (scheduledAt <= new Date()) continue;
 
-        // 🔒 Prevent duplicate schedules
-        const existing = await HeatSchedule.findOne({
-          where: {
-            heatCycleId,
-            alertDay: day,
-          },
-          transaction,
-        });
+      // 🔒 Prevent duplicate schedules
+      const existing = await HeatSchedule.findOne({
+        where: {
+          heatCycleId,
+          alertDay: day,
+        },
+        transaction, // ✅ SAME transaction
+      });
 
-        if (existing) continue;
+      if (existing) continue;
 
-        const schedule = await HeatSchedule.create(
-          {
-            heatCycleId,
-            cowId,
-            alertDay: day,
-            scheduledAt,
-            status: HeatScheduleStatus.SCHEDULED,
-          },
-          { transaction }
-        );
-
-        const delay = scheduledAt.getTime() - Date.now();
-
-        await heatNotificationQueue.add(
-          'heat-alert',
-          {
-            scheduleId: schedule.id,
-            cowId,
-            alertDay: day,
-          },
-          {
-            delay,
-            jobId: `heat:${schedule.id}`, // 🔑 idempotent
-          }
-        );
-      }
-    });
+      await HeatSchedule.create(
+        {
+          heatCycleId,
+          cowId,
+          alertDay: day,
+          scheduledAt,
+          status: HeatScheduleStatus.SCHEDULED,
+        },
+        { transaction } // ✅ SAME transaction
+      );
+    }
   }
 }

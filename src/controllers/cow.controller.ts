@@ -15,7 +15,7 @@ export class CowController {
     try {
       const cow = await CowService.getCowById(req.params.id);
       if (!cow) {
-        res.status(404).json({ message: 'Cow not found' });
+        res.status(404).json({ message: 'Cow not found33333333' });
         return;
       }
       res.json(cow);
@@ -37,7 +37,7 @@ export class CowController {
     try {
       const cow = await CowService.updateCow(req.params.id, req.body);
       if (!cow) {
-        res.status(404).json({ message: 'Cow not found' });
+        res.status(404).json({ message: 'Cow not found4444444444444' });
         return;
       }
       res.json(cow);
@@ -50,7 +50,7 @@ export class CowController {
     try {
       const success = await CowService.deleteCow(req.params.id);
       if (!success) {
-        res.status(404).json({ message: 'Cow not found' });
+        res.status(404).json({ message: 'Cow not found55555555555555' });
         return;
       }
       res.json({ message: 'Cow deleted successfully' });
