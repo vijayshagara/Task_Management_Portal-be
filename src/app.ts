@@ -13,7 +13,8 @@ import taskRoutes from './routes/task.routes';
 const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://task-management-portal-be.vercel.app/",
+  "https://task-management-portal-be.vercel.app",
+  
 ];
 // --------------------
 // Middleware
