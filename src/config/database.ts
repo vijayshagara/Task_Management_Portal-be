@@ -1,4 +1,5 @@
 import { Sequelize } from 'sequelize-typescript';
+import pg from 'pg'; // or require('pg') if not using ES modules
 import config from '../utils/env';
 import HeatSchedule from '../models/heat-schedules.model';
 import Cow from '../models/cow.model';
@@ -8,10 +9,7 @@ import Task from '../models/task.model';
 import User from '../models/user.model';
 import CowHealthStatus from '../models/cow-health-status.model';
 
-const { DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD } = config;
-console.log('🔍 Database configuration:');
-console.log({ DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD });
-console.log('🔧 Initializing database connection with the following config:');
+// Forces pg to be present; also attaches it to the Sequelize instance
 const sequelize = new Sequelize({
   database: config.DB_NAME,
   username: config.DB_USER,
@@ -19,6 +17,7 @@ const sequelize = new Sequelize({
   host: config.DB_HOST,
   port: config.DB_PORT,
   dialect: 'postgres',
+  dialectModule: pg, // 👈 this tells Sequelize to use this pg instance
   models: [
     HeatSchedule,
     Cow,
@@ -26,22 +25,23 @@ const sequelize = new Sequelize({
     HeatCycle,
     Task,
     User,
-    CowHealthStatus
+    CowHealthStatus,
   ],
-  dialectOptions: config.DB_SSL ? {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false,
-    },
-  } : {},
+  dialectOptions: config.DB_SSL
+    ? {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      }
+    : {},
   pool: {
     max: 5,
     min: 1,
     acquire: 30000,
     idle: 10000,
   },
-  // logging: config.NODE_ENV === 'development' ? console.log : false,
-  logging: false,
+  logging: config.NODE_ENV === 'development' ? console.log : false,
   retry: {
     max: 3,
   },
