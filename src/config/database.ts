@@ -9,6 +9,7 @@ import User from '../models/user.model';
 import CowHealthStatus from '../models/cow-health-status.model';
 
 dotenv.config();
+console.log()
 
 const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'neondb',
@@ -26,12 +27,12 @@ const sequelize = new Sequelize({
     User,
     CowHealthStatus
   ],
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false,
-    },
-  },
+  // dialectOptions: {
+  //   ssl: {
+  //     require: true,
+  //     rejectUnauthorized: false,
+  //   },
+  // },
   pool: {
     max: 5,
     min: 1,

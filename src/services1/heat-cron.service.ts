@@ -9,7 +9,7 @@ import {
     sendWhatsApp,
     sendSMS,
     sendPushNotification,
-    createGoogleMeet,
+    createGoogleMeetForUser,
 } from './notification.service';
 
 cron.schedule('* * * * *', async () => {
@@ -59,7 +59,7 @@ cron.schedule('* * * * *', async () => {
             await sendWhatsApp(schedule.cowId, schedule.alertDay);
             await sendSMS(schedule.cowId, schedule.alertDay);
             await sendPushNotification(schedule.cowId, schedule.alertDay);
-            await createGoogleMeet(schedule.cowId);
+            await createGoogleMeetForUser(schedule.cowId, "schedule.refreshToken as any", schedule.alertDay);
 
             await schedule.update({ status: HeatScheduleStatus.SENT });
 

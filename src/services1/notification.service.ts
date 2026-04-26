@@ -1,3 +1,4 @@
+import { google } from "googleapis";
 import nodemailer from 'nodemailer';
 
 export type AlertType = 'HEAT' | 'MILD_FEVER' | 'HIGH_FEVER';
@@ -46,6 +47,60 @@ export async function sendPushNotification(cowId: string, day: number) {
   console.log(`🔔 Push sent | ${cowId} | Day ${day}`);
 }
 
-export async function createGoogleMeet(cowId: string) {
-  console.log(`📅 Meet created | ${cowId}`);
+
+export async function createGoogleMeetForUser(
+  cowId: string,
+  refreshToken: string,
+  day: number
+) {
+  const oAuth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID!,
+    process.env.GOOGLE_CLIENT_SECRET!
+  );
+
+  // 🔑 Use refresh token
+  oAuth2Client.setCredentials({
+    refresh_token: refreshToken,
+  });
+
+  const calendar = google.calendar({
+    version: "v3",
+    auth: oAuth2Client,
+  });
+
+  const startTime = new Date();
+  const endTime = new Date(startTime.getTime() + 15 * 60 * 1000);
+
+  const event = {
+    summary: `Heat Cycle Reminder – Day ${day}`,
+    description: `Cow ${cowId} heat cycle reminder`,
+    start: {
+      dateTime: startTime.toISOString(),
+      timeZone: "Asia/Kolkata",
+    },
+    end: {
+      dateTime: endTime.toISOString(),
+      timeZone: "Asia/Kolkata",
+    },
+    conferenceData: {
+      createRequest: {
+        requestId: `${cowId}-day-${day}-${Date.now()}`,
+      },
+    },
+  };
+
+  const res = await calendar.events.insert({
+    calendarId: "primary",
+    conferenceDataVersion: 1,
+    requestBody: event,
+  });
+
+  const meetLink =
+    res.data.conferenceData?.entryPoints?.find(
+      (ep) => ep.entryPointType === "video"
+    )?.uri;
+
+  console.log("🎥 Google Meet created:", meetLink);
+  return meetLink;
 }
+

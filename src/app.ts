@@ -57,4 +57,35 @@ app.get('/health', (_, res) => {
 // --------------------
 // app.use(errorHandler);
 
+import { oauth2Client } from "./services1/google.service";
+
+// 🔹 Generate Refresh Token (Temporary Route)
+app.get("/generate-token", (req, res) => {
+  const url = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: ["https://www.googleapis.com/auth/calendar"],
+    prompt: "consent",
+  });
+
+  res.redirect(url);
+});
+
+// 🔹 Callback Route
+app.get("/oauth2callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+
+    const { tokens } = await oauth2Client.getToken(code as string);
+
+    console.log("\n🔥 COPY THIS REFRESH TOKEN 🔥\n");
+    console.log(tokens.refresh_token);
+    console.log("\n🔥 SAVE THIS IN .env AS GOOGLE_REFRESH_TOKEN 🔥\n");
+
+    res.send("Refresh token printed in terminal. Copy it.");
+  } catch (error: any) {
+    console.error(error.message);
+    res.status(500).send("Error generating refresh token");
+  }
+});
+
 export default app;

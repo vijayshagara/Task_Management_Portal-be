@@ -1,5 +1,6 @@
 import { Table, Column, Model, DataType, HasMany } from 'sequelize-typescript';
 import { Task } from './task.model';
+import { text } from 'stream/consumers';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -39,6 +40,12 @@ export class User extends Model {
     allowNull: false,
   })
   declare role: UserRole;
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
+  declare googleRefreshToken: string | null;
+
 
   @HasMany(() => Task)
   declare tasks: Task[];

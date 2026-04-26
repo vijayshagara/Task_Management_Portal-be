@@ -1,69 +1,79 @@
-import 'dotenv/config';
-import app from './app';
-import sequelize from './config/database';
-import HeatSchedule from './models/heat-schedules.model';
-// import { heatNotificationQueue } from './queues/heat-notification.queue';
-import './services1/heat-cron.service';
+import "dotenv/config";
+import app from "./app";
+import sequelize from "./config/database";
+import { calendar } from "./services1/google.service";
+import { createMeeting } from "./services1/google.service";
 
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
-/**
- * Reschedule pending heat reminders on server restart
- * - Uses HeatSchedule table (source of truth)
- * - Skips expired schedules
- * - Avoids blocking the event loop
- */
-// async function rescheduleHeatReminders() {
-//   const schedules = await HeatSchedule.findAll({
-//     where: { status: 'scheduled' },
-//   });
+async function listEvents() {
+  try {
+    const result = await calendar.events.list({
+      calendarId: "primary",
+      timeMin: new Date().toISOString(),
+      maxResults: 10,
+      singleEvents: true,
+      orderBy: "startTime",
+    });
 
-//   if (!schedules.length) {
-//     console.log('ℹ️ No heat reminders to reschedule');
-//     return;
-//   }
+    const events = result.data.items;
 
-//   const jobs = schedules.map(schedule => {
-//     const delay = schedule.scheduledAt.getTime() - Date.now();
-//     if (delay <= 0) return null;
+    if (!events?.length) {
+      console.log("No upcoming events found.");
+      return;
+    }
 
-//     return heatNotificationQueue.add(
-//       'heat-reminder',
-//       {
-//         scheduleId: schedule.id,
-//         cowId: schedule.cowId,
-//         alertDay: schedule.alertDay,
-//       },
-//       {
-//         delay,
-//         jobId: `heat:${schedule.id}`, // ✅ prevents duplicate jobs
-//       }
-//     );
-//   });
+    console.log("📅 Upcoming 10 events:");
 
-//   await Promise.all(jobs.filter(Boolean));
-//   console.log(`🔁 Rescheduled ${jobs.filter(Boolean).length} heat reminders`);
-// }
+    events.forEach((event: any) => {
+      const start = event.start?.dateTime ?? event.start?.date;
+      console.log(`${start} - ${event.summary}`);
+    });
+
+  } catch (error: any) {
+    console.error("❌ Google API Error:", error.message);
+  }
+}
 
 async function initialize() {
   try {
     await sequelize.authenticate();
-    console.log('✅ Database connection established');
+    console.log("✅ Database connected");
 
-    // ⚠️ Use alter only in development
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== "production") {
       await sequelize.sync({ alter: true });
     }
 
-    // ✅ Reschedule AFTER DB is ready
-    // await rescheduleHeatReminders();
+    if (process.env.GOOGLE_REFRESH_TOKEN) {
+      await listEvents();
+    } else {
+      console.log("⚠️ Generate refresh token first:");
+      console.log("👉 http://localhost:5000/generate-token");
+    }
+
+    const today = new Date();
+
+    // Set IST manually
+    today.setHours(14, 0, 0); // 2 PM
+
+    const startTime = new Date(today).toISOString();
+
+    const end = new Date(today);
+    end.setHours(15, 0, 0); // 3 PM
+
+    const endTime = end.toISOString();
+
+    // const link = await createMeeting(startTime, endTime);
+    // console.log("✅ Meet Link:", link);
+
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
+
   } catch (error) {
-    console.error('❌ Unable to start server:', error);
+    console.error("❌ Server failed:", error);
     process.exit(1);
   }
 }
