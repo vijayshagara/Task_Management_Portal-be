@@ -95,15 +95,9 @@ export class HeatCycleService {
     return sequelize.transaction(async transaction => {
       
       const cow = await Cow.findByPk(validatedData.cowId, { transaction });
-      console.log('VALIDATED DATA:', validatedData);
 
-      console.log('0000000000000000000000000');
-      console.log("🚀 ~ HeatCycleService ~ createHeatCycle ~ cow:", cow)
       if (!cow) {
-
-        console.log('111111111111111111111111111');
-        
-        throw new Error('Cow not found11111111111');
+        throw new Error('Cow not found');
       }
 
       // ❗ Prevent multiple active cycles

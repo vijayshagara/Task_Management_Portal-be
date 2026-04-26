@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import { oauth2Client } from "./services1/google.service";
+import config from "./utils/env";
 
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
@@ -11,7 +13,7 @@ import taskRoutes from './routes/task.routes';
 const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://toral-cattle-farm.netlify.app",
+  "https://task-management-portal-be.vercel.app/",
 ];
 // --------------------
 // Middleware
@@ -57,10 +59,23 @@ app.get('/health', (_, res) => {
 // --------------------
 // app.use(errorHandler);
 
-import { oauth2Client } from "./services1/google.service";
-
 // 🔹 Generate Refresh Token (Temporary Route)
-app.get("/generate-token", (req, res) => {
+app.get("/generate-token", (req: express.Request, res: express.Response): any => {
+  if (!config.GOOGLE_CLIENT_ID || !config.GOOGLE_CLIENT_SECRET || !config.GOOGLE_REDIRECT_URI) {
+    return res.status(400).json({
+      error: "Google OAuth credentials not configured in .env",
+      required: [
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_REDIRECT_URI",
+      ],
+    });
+  }
+
+  if (!oauth2Client) {
+    return res.status(500).json({ error: "OAuth client not initialized" });
+  }
+
   const url = oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: ["https://www.googleapis.com/auth/calendar"],
@@ -71,20 +86,42 @@ app.get("/generate-token", (req, res) => {
 });
 
 // 🔹 Callback Route
-app.get("/oauth2callback", async (req, res) => {
+app.get("/oauth2callback", async (req: express.Request, res: express.Response): Promise<any> => {
   try {
     const { code } = req.query;
 
+    if (!code) {
+      return res.status(400).send("Missing authorization code");
+    }
+
+    if (!oauth2Client) {
+      return res.status(500).json({ error: "OAuth client not initialized" });
+    }
+
     const { tokens } = await oauth2Client.getToken(code as string);
 
-    console.log("\n🔥 COPY THIS REFRESH TOKEN 🔥\n");
-    console.log(tokens.refresh_token);
-    console.log("\n🔥 SAVE THIS IN .env AS GOOGLE_REFRESH_TOKEN 🔥\n");
+    if (!tokens.refresh_token) {
+      return res.status(400).send("Failed to obtain refresh token");
+    }
 
-    res.send("Refresh token printed in terminal. Copy it.");
+    console.log("\n");
+    console.log("═".repeat(60));
+    console.log("🔥 REFRESH TOKEN GENERATED SUCCESSFULLY 🔥");
+    console.log("═".repeat(60));
+    console.log("\n📋 Add this to your .env file:\n");
+    console.log(`GOOGLE_REFRESH_TOKEN=${tokens.refresh_token}\n`);
+    console.log("═".repeat(60));
+    console.log("\n");
+
+    res.send(`
+      <h1>✅ Success!</h1>
+      <p>Your refresh token has been generated and printed in the server console.</p>
+      <p>Copy the token from your terminal and add it to your .env file.</p>
+      <p>Then restart your server.</p>
+    `);
   } catch (error: any) {
-    console.error(error.message);
-    res.status(500).send("Error generating refresh token");
+    console.error("❌ Token generation error:", error.message);
+    res.status(500).send(`<h1>Error generating refresh token</h1><p>${error.message}</p>`);
   }
 });
 

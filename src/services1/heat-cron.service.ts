@@ -11,6 +11,7 @@ import {
     sendPushNotification,
     createGoogleMeetForUser,
 } from './notification.service';
+import config from '../utils/env';
 
 cron.schedule('* * * * *', async () => {
     console.log('⏰ Heat cron running...');
@@ -59,7 +60,8 @@ cron.schedule('* * * * *', async () => {
             await sendWhatsApp(schedule.cowId, schedule.alertDay);
             await sendSMS(schedule.cowId, schedule.alertDay);
             await sendPushNotification(schedule.cowId, schedule.alertDay);
-            await createGoogleMeetForUser(schedule.cowId, "schedule.refreshToken as any", schedule.alertDay);
+            // await createGoogleMeetForUser(schedule.cowId, "schedule.refreshToken as any", schedule.alertDay);
+            await createGoogleMeetForUser(schedule.cowId, config.GOOGLE_REFRESH_TOKEN!, schedule.alertDay)
 
             await schedule.update({ status: HeatScheduleStatus.SENT });
 
