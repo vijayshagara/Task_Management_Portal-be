@@ -9,10 +9,12 @@ const sharp_1 = __importDefault(require("sharp"));
 const mongodb_2 = require("../config/mongodb");
 const BUCKET_NAME = 'social_media';
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'];
+const MEDIA_NOT_CONFIGURED = 'Media storage is not configured on the server. Add MONGODB_URI to Vercel Environment Variables (Settings → Environment Variables), then redeploy.';
 class SocialMediaService {
-    static getBucket() {
-        if (!(0, mongodb_2.isMongoConnected)()) {
-            throw new Error('Media storage is not configured. Set MONGODB_URI in .env');
+    static async getBucket() {
+        const connected = await (0, mongodb_2.ensureMongoConnected)();
+        if (!connected) {
+            throw new Error(MEDIA_NOT_CONFIGURED);
         }
         return new mongodb_1.GridFSBucket((0, mongodb_2.getMongoDb)(), { bucketName: BUCKET_NAME });
     }
@@ -41,7 +43,7 @@ class SocialMediaService {
     static async upload(file, prefix) {
         const isVideo = file.mimetype.startsWith('video/');
         this.validateFile(file.mimetype, file.size, isVideo);
-        const bucket = this.getBucket();
+        const bucket = await this.getBucket();
         let buffer = file.buffer;
         let contentType = file.mimetype;
         if (!isVideo) {
@@ -67,7 +69,7 @@ class SocialMediaService {
         if (!mongodb_1.ObjectId.isValid(fileId)) {
             throw new Error('Invalid file id');
         }
-        const bucket = this.getBucket();
+        const bucket = await this.getBucket();
         const files = await bucket.find({ _id: new mongodb_1.ObjectId(fileId) }).toArray();
         if (!files.length) {
             throw new Error('File not found');
@@ -80,9 +82,12 @@ class SocialMediaService {
         };
     }
     static async deleteByFileId(fileId) {
-        if (!(0, mongodb_2.isMongoConnected)() || !mongodb_1.ObjectId.isValid(fileId))
+        if (!mongodb_1.ObjectId.isValid(fileId))
             return;
-        const bucket = this.getBucket();
+        const connected = await (0, mongodb_2.ensureMongoConnected)();
+        if (!connected)
+            return;
+        const bucket = await this.getBucket();
         await bucket.delete(new mongodb_1.ObjectId(fileId));
     }
 }

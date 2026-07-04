@@ -1,14 +1,18 @@
 import { GridFSBucket, ObjectId } from 'mongodb';
 import sharp from 'sharp';
-import { getMongoDb, isMongoConnected } from '../config/mongodb';
+import { ensureMongoConnected, getMongoDb } from '../config/mongodb';
 
 const BUCKET_NAME = 'social_media';
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'];
 
+const MEDIA_NOT_CONFIGURED =
+  'Media storage is not configured on the server. Add MONGODB_URI to Vercel Environment Variables (Settings → Environment Variables), then redeploy.';
+
 export class SocialMediaService {
-  private static getBucket(): GridFSBucket {
-    if (!isMongoConnected()) {
-      throw new Error('Media storage is not configured. Set MONGODB_URI in .env');
+  private static async getBucket(): Promise<GridFSBucket> {
+    const connected = await ensureMongoConnected();
+    if (!connected) {
+      throw new Error(MEDIA_NOT_CONFIGURED);
     }
     return new GridFSBucket(getMongoDb(), { bucketName: BUCKET_NAME });
   }
@@ -48,7 +52,7 @@ export class SocialMediaService {
     const isVideo = file.mimetype.startsWith('video/');
     this.validateFile(file.mimetype, file.size, isVideo);
 
-    const bucket = this.getBucket();
+    const bucket = await this.getBucket();
     let buffer = file.buffer;
     let contentType = file.mimetype;
 
@@ -83,7 +87,7 @@ export class SocialMediaService {
       throw new Error('Invalid file id');
     }
 
-    const bucket = this.getBucket();
+    const bucket = await this.getBucket();
     const files = await bucket.find({ _id: new ObjectId(fileId) }).toArray();
     if (!files.length) {
       throw new Error('File not found');
@@ -100,8 +104,10 @@ export class SocialMediaService {
   }
 
   public static async deleteByFileId(fileId: string): Promise<void> {
-    if (!isMongoConnected() || !ObjectId.isValid(fileId)) return;
-    const bucket = this.getBucket();
+    if (!ObjectId.isValid(fileId)) return;
+    const connected = await ensureMongoConnected();
+    if (!connected) return;
+    const bucket = await this.getBucket();
     await bucket.delete(new ObjectId(fileId));
   }
 }

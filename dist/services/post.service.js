@@ -50,6 +50,7 @@ const cow_model_1 = __importDefault(require("../models/cow.model"));
 const saved_item_model_1 = __importStar(require("../models/saved-item.model"));
 const social_media_service_1 = require("./social-media.service");
 const social_notification_service_1 = require("./social-notification.service");
+const mongodb_1 = require("../config/mongodb");
 const createPostSchema = zod_1.z.object({
     content: zod_1.z.string().max(2200).optional(),
     location: zod_1.z.string().max(100).optional(),
@@ -93,6 +94,12 @@ class PostService {
         const hashtags = [
             ...new Set([...(validated.hashtags || []), ...extractHashtags(validated.content)]),
         ];
+        if (files.length > 0) {
+            const mongoReady = await (0, mongodb_1.ensureMongoConnected)();
+            if (!mongoReady) {
+                throw new Error('Media storage is not configured on the server. Add MONGODB_URI to Vercel Environment Variables, then redeploy.');
+            }
+        }
         const post = await post_model_1.default.create({
             authorId,
             content: validated.content ?? null,
