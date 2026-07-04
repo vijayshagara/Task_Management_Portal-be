@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const task_controller_1 = require("../controllers/task.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.get('/', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => { task_controller_1.TaskController.getAllTasks(req, res).catch(next); });
+router.get('/developer', (0, auth_middleware_1.authMiddleware)(['developer']), (req, res, next) => { task_controller_1.TaskController.getDeveloperTasks(req, res).catch(next); });
+router.get('/:id', (0, auth_middleware_1.authMiddleware)(), (req, res, next) => { task_controller_1.TaskController.getTaskById(req, res).catch(next); });
+router.post('/', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => { task_controller_1.TaskController.createTask(req, res).catch(next); });
+router.put('/:id', (0, auth_middleware_1.authMiddleware)(), (req, res, next) => { task_controller_1.TaskController.updateTask(req, res).catch(next); });
+router.delete('/:id', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => { task_controller_1.TaskController.deleteTask(req, res).catch(next); });
+exports.default = router;

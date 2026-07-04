@@ -4,6 +4,7 @@ import sequelize from "./config/database";
 import config from "./utils/env";
 import { listEvents, googleInitialized } from "./services1/google.service";
 import { createMeeting } from "./services1/google.service";
+import { connectMongo, closeMongo } from "./config/mongodb";
 import "./services1/heat-cron.service";  // ← Start cron job
 
 const MAX_RETRIES = 3;
@@ -81,10 +82,13 @@ async function initialize() {
     // Step 2: Sync database schema
     await syncDatabase();
 
-    // Step 3: Initialize Google API (non-blocking)
+    // Step 3: Connect to MongoDB for cow images (optional)
+    await connectMongo();
+
+    // Step 4: Initialize Google API (non-blocking)
     await initializeGoogleAPI();
 
-    // Step 4: Start server
+    // Step 5: Start server
     await startServer();
 
     console.log("\n✨ Application ready!");
@@ -104,12 +108,14 @@ async function initialize() {
 process.on("SIGTERM", async () => {
   console.log("\n🛑 SIGTERM received, shutting down gracefully...");
   await sequelize.close();
+  await closeMongo();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
   console.log("\n🛑 SIGINT received, shutting down gracefully...");
   await sequelize.close();
+  await closeMongo();
   process.exit(0);
 });
 

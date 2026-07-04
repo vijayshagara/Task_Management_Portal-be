@@ -159,8 +159,22 @@ export class HeatCycleService {
   // DELETE
   // --------------------
   public static async deleteHeatCycle(id: string): Promise<boolean> {
-    const deleted = await HeatCycle.destroy({ where: { id } });
-    return deleted > 0;
+    const cycle = await HeatCycle.findByPk(id);
+    if (!cycle) return false;
+
+    const deletedCount = await sequelize.transaction(async (transaction) => {
+      await HeatSchedule.destroy({
+        where: { heatCycleId: id },
+        transaction,
+      });
+
+      return HeatCycle.destroy({
+        where: { id },
+        transaction,
+      });
+    });
+
+    return deletedCount > 0;
   }
 
   // --------------------

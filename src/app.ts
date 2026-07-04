@@ -9,6 +9,10 @@ import cowRoutes from './routes/cow.routes';
 import healthRoutes from './routes/health-record.routes';
 import heatCycleRoutes from './routes/heat-cycle.routes';
 import taskRoutes from './routes/task.routes';
+import profileRoutes from './routes/profile.routes';
+import postRoutes from './routes/post.routes';
+import followRoutes from './routes/follow.routes';
+import socialRoutes from './routes/social.routes';
 
 const app = express();
 const allowedOrigins = [
@@ -32,7 +36,7 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -48,6 +52,10 @@ app.use('/api/cows', cowRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/heat-cycles', heatCycleRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/follow', followRoutes);
+app.use('/api/social', socialRoutes);
 
 // --------------------
 // Health check (IMPORTANT for free hosting)

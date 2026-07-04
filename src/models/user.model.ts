@@ -1,10 +1,11 @@
-import { Table, Column, Model, DataType, HasMany } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, HasMany, HasOne } from 'sequelize-typescript';
 import { Task } from './task.model';
-import { text } from 'stream/consumers';
+import UserProfile from './user-profile.model';
 
 export enum UserRole {
   ADMIN = 'admin',
   DEVELOPER = 'developer',
+  FARMER = 'farmer',
 }
 
 @Table({ tableName: 'users' })
@@ -49,6 +50,9 @@ export class User extends Model {
 
   @HasMany(() => Task)
   declare tasks: Task[];
+
+  @HasOne(() => UserProfile)
+  declare profile: UserProfile;
 }
 
 export default User;

@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const profile_controller_1 = require("../controllers/profile.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const upload_middleware_1 = require("../middlewares/upload.middleware");
+const router = (0, express_1.Router)();
+const auth = (0, auth_middleware_1.authMiddleware)([]);
+router.get('/me', auth, (req, res, next) => profile_controller_1.ProfileController.getMe(req, res).catch(next));
+router.get('/suggested', auth, (req, res, next) => profile_controller_1.ProfileController.getSuggested(req, res).catch(next));
+router.get('/:userId', auth, (req, res, next) => profile_controller_1.ProfileController.getProfile(req, res).catch(next));
+router.put('/me', auth, (req, res, next) => profile_controller_1.ProfileController.updateProfile(req, res).catch(next));
+router.post('/me/avatar', auth, upload_middleware_1.socialMediaUpload.single('image'), (req, res, next) => profile_controller_1.ProfileController.uploadProfilePicture(req, res).catch(next));
+router.post('/me/cover', auth, upload_middleware_1.socialMediaUpload.single('image'), (req, res, next) => profile_controller_1.ProfileController.uploadCoverPhoto(req, res).catch(next));
+exports.default = router;

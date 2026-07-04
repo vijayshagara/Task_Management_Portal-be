@@ -13,8 +13,8 @@ export class AuthController {
 
   public static async login(req: Request, res: Response): Promise<void> {
     try {
-      const token = await AuthService.login(req.body);
-      res.json({ token });
+      const result = await AuthService.login(req.body);
+      res.json({ token: result.token, user: result.user });
     } catch (error: any) {
       res.status(401).json({ message: error.message });
     }

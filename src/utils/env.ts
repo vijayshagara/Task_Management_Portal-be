@@ -31,6 +31,9 @@ interface EnvConfig {
 
   // Redis (Optional)
   REDIS_URL?: string;
+
+  // MongoDB (Optional — cow images)
+  MONGODB_URI?: string;
 }
 
 function validateEnv(): EnvConfig {
@@ -82,6 +85,9 @@ function validateEnv(): EnvConfig {
 
     // Redis (Optional)
     REDIS_URL: process.env.REDIS_URL,
+
+    // MongoDB (Optional)
+    MONGODB_URI: process.env.MONGODB_URI,
   };
 }
 

@@ -3,7 +3,8 @@ export interface IUser {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'developer';
+  role: 'admin' | 'developer' | 'farmer';
+  username?: string;
 }
 
 export interface IUserLogin {
@@ -14,5 +15,5 @@ export interface IUserLogin {
 export interface IUserTokenPayload {
   id: string;
   email: string;
-  role: 'admin' | 'developer';
+  role: 'admin' | 'developer' | 'farmer';
 }
