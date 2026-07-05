@@ -8,6 +8,7 @@
     "dev": "NODE_OPTIONS=--dns-result-order=ipv4first nodemon src/server.ts",
     "build": "tsc",
     "migrate": "npx sequelize-cli db:migrate",
+    "migrate:prod": "npx ts-node src/scripts/run-migrations.ts",
     "seed:feed": "npx ts-node src/scripts/seed-feed.ts",
     "seed:feed:clear": "npx ts-node src/scripts/seed-feed.ts clear"
   },

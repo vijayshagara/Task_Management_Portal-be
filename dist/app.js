@@ -17,6 +17,8 @@ const profile_routes_1 = __importDefault(require("./routes/profile.routes"));
 const post_routes_1 = __importDefault(require("./routes/post.routes"));
 const follow_routes_1 = __importDefault(require("./routes/follow.routes"));
 const social_routes_1 = __importDefault(require("./routes/social.routes"));
+const farm_routes_1 = __importDefault(require("./routes/farm.routes"));
+const init_db_1 = require("./config/init-db");
 const app = (0, express_1.default)();
 const allowedOrigins = [
     "http://localhost:5173",
@@ -43,6 +45,17 @@ app.use((0, cors_1.default)({
 }));
 app.options(/.*/, (0, cors_1.default)());
 app.use(express_1.default.json({ limit: '10mb' })); // safety for payload size
+// Ensure DB schema is up to date (fixes missing columns on Vercel production)
+app.use(async (_req, res, next) => {
+    try {
+        await (0, init_db_1.ensureDbReady)();
+        next();
+    }
+    catch (error) {
+        console.error('DB init failed:', error.message);
+        res.status(503).json({ message: 'Database unavailable', detail: error.message });
+    }
+});
 // --------------------
 // Routes
 // --------------------
@@ -56,6 +69,7 @@ app.use('/api/profile', profile_routes_1.default);
 app.use('/api/posts', post_routes_1.default);
 app.use('/api/follow', follow_routes_1.default);
 app.use('/api/social', social_routes_1.default);
+app.use('/api/farm', farm_routes_1.default);
 // --------------------
 // Health check (IMPORTANT for free hosting)
 // --------------------

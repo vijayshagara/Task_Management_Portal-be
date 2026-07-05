@@ -7,7 +7,7 @@ const mongodb_1 = require("../config/mongodb");
 class CowController {
     static async getAllCows(req, res) {
         try {
-            const cows = await cow_service_1.CowService.getAllCows();
+            const cows = await cow_service_1.CowService.getAllCows(req.user?.id, req.user?.role);
             res.send(cows);
         }
         catch (error) {
@@ -16,7 +16,7 @@ class CowController {
     }
     static async getCowById(req, res) {
         try {
-            const cow = await cow_service_1.CowService.getCowById(req.params.id);
+            const cow = await cow_service_1.CowService.getCowById(req.params.id, req.user?.id, req.user?.role);
             if (!cow) {
                 res.status(404).json({ message: 'Cow not found' });
                 return;
@@ -29,7 +29,8 @@ class CowController {
     }
     static async createCow(req, res) {
         try {
-            const cow = await cow_service_1.CowService.createCow(req.body);
+            const ownerId = req.user?.role === 'admin' ? req.body.ownerId : req.user?.id;
+            const cow = await cow_service_1.CowService.createCow({ ...req.body, ownerId: ownerId || req.user?.id });
             res.status(201).json(cow);
         }
         catch (error) {
@@ -38,7 +39,7 @@ class CowController {
     }
     static async updateCow(req, res) {
         try {
-            const cow = await cow_service_1.CowService.updateCow(req.params.id, req.body);
+            const cow = await cow_service_1.CowService.updateCow(req.params.id, req.body, req.user?.id, req.user?.role);
             if (!cow) {
                 res.status(404).json({ message: 'Cow not found' });
                 return;
@@ -51,7 +52,7 @@ class CowController {
     }
     static async deleteCow(req, res) {
         try {
-            const success = await cow_service_1.CowService.deleteCow(req.params.id);
+            const success = await cow_service_1.CowService.deleteCow(req.params.id, req.user?.id, req.user?.role);
             if (!success) {
                 res.status(404).json({ message: 'Cow not found' });
                 return;
@@ -72,7 +73,7 @@ class CowController {
                 res.status(400).json({ message: 'No image file provided' });
                 return;
             }
-            const cow = await cow_service_1.CowService.getCowById(req.params.id);
+            const cow = await cow_service_1.CowService.getCowById(req.params.id, req.user?.id, req.user?.role);
             if (!cow) {
                 res.status(404).json({ message: 'Cow not found' });
                 return;

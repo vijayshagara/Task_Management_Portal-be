@@ -13,17 +13,26 @@ const health_record_model_1 = __importDefault(require("../models/health-record.m
 const heat_cycle_model_1 = __importDefault(require("../models/heat-cycle.model"));
 const heat_schedules_model_1 = __importDefault(require("../models/heat-schedules.model"));
 const cow_health_status_model_1 = __importDefault(require("../models/cow-health-status.model"));
+const farm_access_1 = require("../utils/farm-access");
 class CowService {
-    static async getAllCows() {
+    static async getAllCows(userId, role) {
+        const where = role && userId ? (0, farm_access_1.cowScopeWhere)(userId, role) : {};
         return cow_model_1.Cow.findAll({
+            where,
             order: [['createdAt', 'DESC']],
         });
     }
-    static async getCowById(id) {
-        return cow_model_1.Cow.findByPk(id);
+    static async getCowById(id, userId, role) {
+        const cow = await cow_model_1.Cow.findByPk(id);
+        if (!cow)
+            return null;
+        if (role && userId && !(0, farm_access_1.isAdmin)(role) && cow.ownerId !== userId)
+            return null;
+        return cow;
     }
     static async createCow(cowData) {
         const validatedData = this.cowSchema.parse(cowData);
+        const ownerId = cowData.ownerId ?? null;
         return database_1.default.transaction(async (transaction) => {
             const existingCow = await cow_model_1.Cow.findOne({
                 where: {
@@ -35,12 +44,12 @@ class CowService {
             if (existingCow) {
                 throw new Error('Cow with same name and birth date already exists');
             }
-            return cow_model_1.Cow.create(validatedData, { transaction });
+            return cow_model_1.Cow.create({ ...validatedData, ownerId }, { transaction });
         });
     }
-    static async updateCow(id, cowData) {
+    static async updateCow(id, cowData, userId, role) {
         const validatedData = this.cowSchema.partial().parse(cowData);
-        const cow = await cow_model_1.Cow.findByPk(id);
+        const cow = await this.getCowById(id, userId, role);
         if (!cow)
             return null;
         return cow.update(validatedData);
@@ -51,8 +60,8 @@ class CowService {
             return null;
         return cow.update({ image: fileId });
     }
-    static async deleteCow(id) {
-        const cow = await cow_model_1.Cow.findByPk(id);
+    static async deleteCow(id, userId, role) {
+        const cow = await this.getCowById(id, userId, role);
         if (!cow)
             return false;
         if (cow.image && (0, mongodb_1.isMongoConnected)()) {

@@ -1,9 +1,13 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 import { z } from 'zod';
+import { Op } from 'sequelize';
 import { User } from '../models/user.model';
 import UserProfile from '../models/user-profile.model';
 import UserSettings from '../models/user-settings.model';
+import PasswordReset from '../models/password-reset.model';
+import RefreshToken from '../models/refresh-token.model';
 import {
   IUser,
   IUserLogin,
@@ -19,6 +23,7 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET: Secret = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || '2h';
+const REFRESH_EXPIRES_DAYS = 30;
 const SALT_ROUNDS = 10;
 
 // --------------------
@@ -40,6 +45,37 @@ export class AuthService {
     email: z.string().email(),
     password: z.string().min(6),
   });
+
+  private static forgotPasswordSchema = z.object({
+    email: z.string().email(),
+  });
+
+  private static resetPasswordSchema = z.object({
+    token: z.string().min(1),
+    password: z.string().min(6),
+  });
+
+  private static refreshSchema = z.object({
+    refreshToken: z.string().min(1),
+  });
+
+  private static changePasswordSchema = z.object({
+    currentPassword: z.string().min(6),
+    newPassword: z.string().min(6),
+  });
+
+  private static signAccessToken(payload: IUserTokenPayload): string {
+    const signOptions: SignOptions = { expiresIn: JWT_EXPIRES_IN as any };
+    return jwt.sign(payload, JWT_SECRET, signOptions);
+  }
+
+  private static async createRefreshToken(userId: string): Promise<string> {
+    const token = crypto.randomBytes(40).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + REFRESH_EXPIRES_DAYS);
+    await RefreshToken.create({ userId, token, expiresAt });
+    return token;
+  }
 
   // --------------------
   // REGISTER
@@ -99,7 +135,7 @@ export class AuthService {
   // --------------------
   public static async login(
     loginData: IUserLogin
-  ): Promise<{ token: string; user: Omit<User, 'password'> & { profile?: UserProfile } }> {
+  ): Promise<{ token: string; refreshToken: string; user: Omit<User, 'password'> & { profile?: UserProfile } }> {
 
     const validatedData = this.loginSchema.parse(loginData);
 
@@ -126,11 +162,8 @@ export class AuthService {
       role: user.role as 'admin' | 'developer' | 'farmer',
     };
 
-    const signOptions: SignOptions = {
-      expiresIn: JWT_EXPIRES_IN as any,
-    };
-
-    const token = jwt.sign(payload, JWT_SECRET, signOptions);
+    const token = this.signAccessToken(payload);
+    const refreshToken = await this.createRefreshToken(user.id);
 
     const profile = await UserProfile.findOrCreate({
       where: { userId: user.id },
@@ -150,8 +183,83 @@ export class AuthService {
 
     return {
       token,
+      refreshToken,
       user: { ...safeUser, profile: profile?.get({ plain: true }) } as any,
     };
+  }
+
+  // --------------------
+  // REFRESH TOKEN
+  // --------------------
+  public static async refreshAccessToken(refreshToken: string) {
+    const validated = this.refreshSchema.parse({ refreshToken });
+    const stored = await RefreshToken.findOne({
+      where: { token: validated.refreshToken, expiresAt: { [Op.gt]: new Date() } },
+    });
+    if (!stored) throw new Error('Invalid or expired refresh token');
+
+    const user = await User.findByPk(stored.userId);
+    if (!user) throw new Error('User not found');
+
+    const payload: IUserTokenPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role as 'admin' | 'developer' | 'farmer',
+    };
+
+    return { token: this.signAccessToken(payload), refreshToken: stored.token };
+  }
+
+  // --------------------
+  // FORGOT / RESET PASSWORD
+  // --------------------
+  public static async forgotPassword(email: string) {
+    const { email: validEmail } = this.forgotPasswordSchema.parse({ email });
+    const user = await User.findOne({ where: { email: validEmail } });
+    if (!user) return { message: 'If the email exists, a reset link has been sent' };
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    await PasswordReset.create({ userId: user.id, token, expiresAt });
+
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[PASSWORD RESET] Link for ${validEmail}: ${resetLink}`);
+    }
+
+    return { message: 'If the email exists, a reset link has been sent', ...(process.env.NODE_ENV === 'development' ? { token } : {}) };
+  }
+
+  public static async resetPassword(token: string, password: string) {
+    const validated = this.resetPasswordSchema.parse({ token, password });
+    const reset = await PasswordReset.findOne({
+      where: { token: validated.token, used: false, expiresAt: { [Op.gt]: new Date() } },
+    });
+    if (!reset) throw new Error('Invalid or expired reset token');
+
+    const user = await User.findByPk(reset.userId);
+    if (!user) throw new Error('User not found');
+
+    const hashedPassword = await bcrypt.hash(validated.password, SALT_ROUNDS);
+    await user.update({ password: hashedPassword });
+    await reset.update({ used: true });
+    await RefreshToken.destroy({ where: { userId: user.id } });
+
+    return { message: 'Password reset successful' };
+  }
+
+  public static async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const validated = this.changePasswordSchema.parse({ currentPassword, newPassword });
+    const user = await User.findByPk(userId);
+    if (!user) throw new Error('User not found');
+
+    const valid = await bcrypt.compare(validated.currentPassword, user.password);
+    if (!valid) throw new Error('Current password is incorrect');
+
+    await user.update({ password: await bcrypt.hash(validated.newPassword, SALT_ROUNDS) });
+    return { message: 'Password changed successfully' };
   }
 
   // --------------------

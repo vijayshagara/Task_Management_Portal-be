@@ -3,32 +3,29 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const health_record_controller_1 = require("../controllers/health-record.controller");
 const auth_middleware_1 = require("../middlewares/auth.middleware");
+const iot_auth_middleware_1 = require("../middlewares/iot-auth.middleware");
 const router = (0, express_1.Router)();
-// Get all health records
-router.get('/', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+const auth = (0, auth_middleware_1.authMiddleware)([]);
+const farmWrite = (0, auth_middleware_1.authMiddleware)(['admin', 'farmer']);
+router.get('/', auth, (req, res, next) => {
     health_record_controller_1.HealthRecordController.getAllHealthRecords(req, res).catch(next);
 });
-// Get health record by ID
-router.get('/:id', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+router.get('/:id', auth, (req, res, next) => {
     health_record_controller_1.HealthRecordController.getHealthRecordById(req, res).catch(next);
 });
-// Get health records by cow ID
-router.get('/cow/:cowId', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+router.get('/cow/:cowId', auth, (req, res, next) => {
     health_record_controller_1.HealthRecordController.getHealthRecordsByCowId(req, res).catch(next);
 });
-// Create health record
-router.post('/', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+router.post('/', farmWrite, (req, res, next) => {
     health_record_controller_1.HealthRecordController.createHealthRecord(req, res).catch(next);
 });
-// Update health record
-router.put('/:id', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+router.put('/:id', farmWrite, (req, res, next) => {
     health_record_controller_1.HealthRecordController.updateHealthRecord(req, res).catch(next);
 });
-// Delete health record
-router.delete('/:id', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+router.delete('/:id', farmWrite, (req, res, next) => {
     health_record_controller_1.HealthRecordController.deleteHealthRecord(req, res).catch(next);
 });
-router.post('/iot', (req, res, next) => {
+router.post('/iot', (0, iot_auth_middleware_1.iotAuthMiddleware)(), (req, res, next) => {
     health_record_controller_1.HealthRecordController.createFromDevice(req, res).catch(next);
 });
 exports.default = router;

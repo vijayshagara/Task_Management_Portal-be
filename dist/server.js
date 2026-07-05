@@ -9,7 +9,12 @@ const database_1 = __importDefault(require("./config/database"));
 const env_1 = __importDefault(require("./utils/env"));
 const google_service_1 = require("./services1/google.service");
 const mongodb_1 = require("./config/mongodb");
-require("./services1/heat-cron.service"); // ← Start cron job
+const run_migrations_1 = require("./scripts/run-migrations");
+// Cron only on long-running servers (not Vercel serverless)
+if (!process.env.VERCEL) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('./services1/heat-cron.service');
+}
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
 async function connectDatabase(retries = 0) {
@@ -36,9 +41,12 @@ async function connectDatabase(retries = 0) {
 }
 async function syncDatabase() {
     try {
-        if (env_1.default.NODE_ENV !== "production") {
+        // Always run idempotent SQL migrations (safe for production/Vercel)
+        await (0, run_migrations_1.runMigrations)();
+        // Dev-only: Sequelize alter sync for local iteration
+        if (env_1.default.NODE_ENV !== "production" && !process.env.VERCEL) {
             await database_1.default.sync({ alter: true });
-            console.log("✅ Database schema synchronized");
+            console.log("✅ Database schema synchronized (dev alter)");
         }
     }
     catch (error) {

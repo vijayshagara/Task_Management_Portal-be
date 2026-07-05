@@ -5,7 +5,13 @@ import config from "./utils/env";
 import { listEvents, googleInitialized } from "./services1/google.service";
 import { createMeeting } from "./services1/google.service";
 import { connectMongo, closeMongo } from "./config/mongodb";
-import "./services1/heat-cron.service";  // ← Start cron job
+import { runMigrations } from "./scripts/run-migrations";
+
+// Cron only on long-running servers (not Vercel serverless)
+if (!process.env.VERCEL) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('./services1/heat-cron.service');
+}
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
@@ -37,9 +43,13 @@ async function connectDatabase(retries = 0): Promise<boolean> {
 
 async function syncDatabase() {
   try {
-    if (config.NODE_ENV !== "production") {
+    // Always run idempotent SQL migrations (safe for production/Vercel)
+    await runMigrations();
+
+    // Dev-only: Sequelize alter sync for local iteration
+    if (config.NODE_ENV !== "production" && !process.env.VERCEL) {
       await sequelize.sync({ alter: true });
-      console.log("✅ Database schema synchronized");
+      console.log("✅ Database schema synchronized (dev alter)");
     }
   } catch (error: any) {
     console.error("❌ Database sync failed:", error.message);

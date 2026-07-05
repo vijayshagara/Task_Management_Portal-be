@@ -4,8 +4,10 @@ import { authMiddleware } from '../middlewares/auth.middleware';
 import { cowImageUpload } from '../middlewares/upload.middleware';
 
 const router = Router();
+const auth = authMiddleware([]);
+const farmWrite = authMiddleware(['admin', 'farmer']);
 
-router.get('/', authMiddleware([]), (req, res, next) => {
+router.get('/', auth, (req, res, next) => {
   CowController.getAllCows(req, res).catch(next);
 });
 
@@ -15,26 +17,26 @@ router.get('/:id/image', (req, res, next) => {
 
 router.post(
   '/:id/image',
-  authMiddleware(['admin']),
+  farmWrite,
   cowImageUpload.single('image'),
   (req, res, next) => {
     CowController.uploadCowImage(req, res).catch(next);
   }
 );
 
-router.get('/:id', authMiddleware([]), (req, res, next) => {
+router.get('/:id', auth, (req, res, next) => {
   CowController.getCowById(req, res).catch(next);
 });
 
-router.post('/', authMiddleware(['admin']), (req, res, next) => {
+router.post('/', farmWrite, (req, res, next) => {
   CowController.createCow(req, res).catch(next);
 });
 
-router.put('/:id', authMiddleware(['admin']), (req, res, next) => {
+router.put('/:id', farmWrite, (req, res, next) => {
   CowController.updateCow(req, res).catch(next);
 });
 
-router.delete('/:id', authMiddleware(['admin']), (req, res, next) => {
+router.delete('/:id', farmWrite, (req, res, next) => {
   CowController.deleteCow(req, res).catch(next);
 });
 

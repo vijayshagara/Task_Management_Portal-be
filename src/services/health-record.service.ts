@@ -107,7 +107,7 @@ export class HealthRecordService {
       // 1️⃣ Validate cow
       const cow = await Cow.findByPk(validatedData.cowId, { transaction });
       if (!cow) {
-        throw new Error('Cow not found222222222');
+        throw new Error('Cow not found');
       }
 
       // 2️⃣ Insert history record

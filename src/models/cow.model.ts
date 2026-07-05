@@ -5,9 +5,12 @@ import {
   DataType,
   HasMany,
   Index,
+  ForeignKey,
+  BelongsTo,
 } from 'sequelize-typescript';
 import HeatCycle from './heat-cycle.model';
 import HealthRecord from './health-record.model';
+import User from './user.model';
 
 export enum CowGender {
   FEMALE = 'female',
@@ -76,6 +79,13 @@ export class Cow extends Model {
     allowNull: true,
   })
   declare image: string | null;
+
+  @ForeignKey(() => User)
+  @Column({ type: DataType.UUID, allowNull: true })
+  declare ownerId: string | null;
+
+  @BelongsTo(() => User)
+  declare owner: User;
 
   // --------------------
   // Relations

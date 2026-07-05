@@ -16,6 +16,7 @@ exports.Cow = exports.CowGender = void 0;
 const sequelize_typescript_1 = require("sequelize-typescript");
 const heat_cycle_model_1 = __importDefault(require("./heat-cycle.model"));
 const health_record_model_1 = __importDefault(require("./health-record.model"));
+const user_model_1 = __importDefault(require("./user.model"));
 var CowGender;
 (function (CowGender) {
     CowGender["FEMALE"] = "female";
@@ -89,6 +90,15 @@ __decorate([
     }),
     __metadata("design:type", Object)
 ], Cow.prototype, "image", void 0);
+__decorate([
+    (0, sequelize_typescript_1.ForeignKey)(() => user_model_1.default),
+    (0, sequelize_typescript_1.Column)({ type: sequelize_typescript_1.DataType.UUID, allowNull: true }),
+    __metadata("design:type", Object)
+], Cow.prototype, "ownerId", void 0);
+__decorate([
+    (0, sequelize_typescript_1.BelongsTo)(() => user_model_1.default),
+    __metadata("design:type", user_model_1.default)
+], Cow.prototype, "owner", void 0);
 __decorate([
     (0, sequelize_typescript_1.HasMany)(() => heat_cycle_model_1.default),
     __metadata("design:type", Array)

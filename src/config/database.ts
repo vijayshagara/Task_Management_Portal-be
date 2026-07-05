@@ -25,6 +25,16 @@ import Notification from '../models/notification.model';
 import SavedItem from '../models/saved-item.model';
 import Block from '../models/block.model';
 import UserSettings from '../models/user-settings.model';
+import FarmDiary from '../models/farm-diary.model';
+import MilkRecord from '../models/milk-record.model';
+import Vaccination from '../models/vaccination.model';
+import Pregnancy from '../models/pregnancy.model';
+import MilkCollection from '../models/milk-collection.model';
+import KnowledgeArticle from '../models/knowledge-article.model';
+import PushToken from '../models/push-token.model';
+import DeviceApiKey from '../models/device-api-key.model';
+import PasswordReset from '../models/password-reset.model';
+import RefreshToken from '../models/refresh-token.model';
 
 const sequelize = new Sequelize({
   database: config.DB_NAME,
@@ -59,6 +69,16 @@ const sequelize = new Sequelize({
     SavedItem,
     Block,
     UserSettings,
+    FarmDiary,
+    MilkRecord,
+    Vaccination,
+    Pregnancy,
+    MilkCollection,
+    KnowledgeArticle,
+    PushToken,
+    DeviceApiKey,
+    PasswordReset,
+    RefreshToken,
   ],
   dialectOptions: config.DB_SSL
     ? {
@@ -70,13 +90,23 @@ const sequelize = new Sequelize({
     : {},
   pool: {
     max: 5,
-    min: 1,
+    min: 0,
     acquire: 30000,
     idle: 10000,
   },
   logging: config.NODE_ENV === 'development' ? console.log : false,
   retry: {
     max: 3,
+  },
+  hooks: {
+    // Reset poisoned connections (common on Vercel/PgBouncer after a failed query)
+    afterConnect: async (connection: { query: (sql: string) => Promise<unknown> }) => {
+      try {
+        await connection.query('ROLLBACK');
+      } catch {
+        // ignore — no active transaction
+      }
+    },
   },
 });
 

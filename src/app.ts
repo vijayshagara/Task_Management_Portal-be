@@ -13,6 +13,8 @@ import profileRoutes from './routes/profile.routes';
 import postRoutes from './routes/post.routes';
 import followRoutes from './routes/follow.routes';
 import socialRoutes from './routes/social.routes';
+import farmRoutes from './routes/farm.routes';
+import { ensureDbReady } from './config/init-db';
 
 const app = express();
 const allowedOrigins = [
@@ -43,6 +45,17 @@ app.use(
 app.options(/.*/, cors());
 app.use(express.json({ limit: '10mb' })); // safety for payload size
 
+// Ensure DB schema is up to date (fixes missing columns on Vercel production)
+app.use(async (_req, res, next) => {
+  try {
+    await ensureDbReady();
+    next();
+  } catch (error: any) {
+    console.error('DB init failed:', error.message);
+    res.status(503).json({ message: 'Database unavailable', detail: error.message });
+  }
+});
+
 // --------------------
 // Routes
 // --------------------
@@ -56,6 +69,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/follow', followRoutes);
 app.use('/api/social', socialRoutes);
+app.use('/api/farm', farmRoutes);
 
 // --------------------
 // Health check (IMPORTANT for free hosting)

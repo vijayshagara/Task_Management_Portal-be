@@ -30,6 +30,16 @@ const notification_model_1 = __importDefault(require("../models/notification.mod
 const saved_item_model_1 = __importDefault(require("../models/saved-item.model"));
 const block_model_1 = __importDefault(require("../models/block.model"));
 const user_settings_model_1 = __importDefault(require("../models/user-settings.model"));
+const farm_diary_model_1 = __importDefault(require("../models/farm-diary.model"));
+const milk_record_model_1 = __importDefault(require("../models/milk-record.model"));
+const vaccination_model_1 = __importDefault(require("../models/vaccination.model"));
+const pregnancy_model_1 = __importDefault(require("../models/pregnancy.model"));
+const milk_collection_model_1 = __importDefault(require("../models/milk-collection.model"));
+const knowledge_article_model_1 = __importDefault(require("../models/knowledge-article.model"));
+const push_token_model_1 = __importDefault(require("../models/push-token.model"));
+const device_api_key_model_1 = __importDefault(require("../models/device-api-key.model"));
+const password_reset_model_1 = __importDefault(require("../models/password-reset.model"));
+const refresh_token_model_1 = __importDefault(require("../models/refresh-token.model"));
 const sequelize = new sequelize_typescript_1.Sequelize({
     database: env_1.default.DB_NAME,
     username: env_1.default.DB_USER,
@@ -63,6 +73,16 @@ const sequelize = new sequelize_typescript_1.Sequelize({
         saved_item_model_1.default,
         block_model_1.default,
         user_settings_model_1.default,
+        farm_diary_model_1.default,
+        milk_record_model_1.default,
+        vaccination_model_1.default,
+        pregnancy_model_1.default,
+        milk_collection_model_1.default,
+        knowledge_article_model_1.default,
+        push_token_model_1.default,
+        device_api_key_model_1.default,
+        password_reset_model_1.default,
+        refresh_token_model_1.default,
     ],
     dialectOptions: env_1.default.DB_SSL
         ? {
@@ -74,13 +94,24 @@ const sequelize = new sequelize_typescript_1.Sequelize({
         : {},
     pool: {
         max: 5,
-        min: 1,
+        min: 0,
         acquire: 30000,
         idle: 10000,
     },
     logging: env_1.default.NODE_ENV === 'development' ? console.log : false,
     retry: {
         max: 3,
+    },
+    hooks: {
+        // Reset poisoned connections (common on Vercel/PgBouncer after a failed query)
+        afterConnect: async (connection) => {
+            try {
+                await connection.query('ROLLBACK');
+            }
+            catch {
+                // ignore — no active transaction
+            }
+        },
     },
 });
 exports.default = sequelize;
