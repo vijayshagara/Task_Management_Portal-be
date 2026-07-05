@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { CowService } from '../services/cow.service';
 import { CowImageService } from '../services/cow-image.service';
-import { isMongoConnected } from '../config/mongodb';
 import { AuthenticatedRequest } from '../interfaces/auth.interface';
 
 export class CowController {
@@ -65,11 +64,6 @@ export class CowController {
 
   public static async uploadCowImage(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      if (!isMongoConnected()) {
-        res.status(503).json({ message: 'Image storage is not configured. Set MONGODB_URI in .env' });
-        return;
-      }
-
       if (!req.file) {
         res.status(400).json({ message: 'No image file provided' });
         return;
@@ -96,18 +90,16 @@ export class CowController {
 
   public static async getCowImage(req: Request, res: Response): Promise<void> {
     try {
-      if (!isMongoConnected()) {
-        res.status(503).json({ message: 'Image storage is not configured' });
-        return;
-      }
-
       const cow = await CowService.getCowById(req.params.id);
       if (!cow || !cow.image) {
         res.status(404).json({ message: 'Image not found' });
         return;
       }
 
-      const { stream, contentType } = await CowImageService.getCowImageStream(cow.image);
+      const { stream, contentType } = await CowImageService.getCowImageStream(
+        cow.image,
+        cow.id
+      );
 
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400');

@@ -7,7 +7,6 @@ exports.CowService = void 0;
 const cow_model_1 = require("../models/cow.model");
 const zod_1 = require("zod");
 const database_1 = __importDefault(require("../config/database"));
-const mongodb_1 = require("../config/mongodb");
 const cow_image_service_1 = require("./cow-image.service");
 const health_record_model_1 = __importDefault(require("../models/health-record.model"));
 const heat_cycle_model_1 = __importDefault(require("../models/heat-cycle.model"));
@@ -64,8 +63,8 @@ class CowService {
         const cow = await this.getCowById(id, userId, role);
         if (!cow)
             return false;
-        if (cow.image && (0, mongodb_1.isMongoConnected)()) {
-            await cow_image_service_1.CowImageService.deleteByFileId(cow.image);
+        if (cow.image) {
+            await cow_image_service_1.CowImageService.deleteByFileId(cow.image).catch(() => { });
         }
         const deletedCount = await database_1.default.transaction(async (transaction) => {
             await heat_schedules_model_1.default.destroy({ where: { cowId: id }, transaction });

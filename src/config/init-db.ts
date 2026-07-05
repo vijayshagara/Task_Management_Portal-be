@@ -1,5 +1,6 @@
 import sequelize from './database';
 import { runMigrations } from '../scripts/run-migrations';
+import { ensureMongoConnected } from './mongodb';
 
 let ready = false;
 let initPromise: Promise<void> | null = null;
@@ -14,6 +15,7 @@ export async function ensureDbReady(): Promise<void> {
     initPromise = (async () => {
       await sequelize.authenticate();
       await runMigrations();
+      await ensureMongoConnected();
       ready = true;
     })().catch((err) => {
       initPromise = null;

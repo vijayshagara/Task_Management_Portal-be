@@ -35,6 +35,7 @@ import PushToken from '../models/push-token.model';
 import DeviceApiKey from '../models/device-api-key.model';
 import PasswordReset from '../models/password-reset.model';
 import RefreshToken from '../models/refresh-token.model';
+import CowImageBlob from '../models/cow-image-blob.model';
 
 const sequelize = new Sequelize({
   database: config.DB_NAME,
@@ -79,6 +80,7 @@ const sequelize = new Sequelize({
     DeviceApiKey,
     PasswordReset,
     RefreshToken,
+    CowImageBlob,
   ],
   dialectOptions: config.DB_SSL
     ? {

@@ -166,3 +166,13 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Cow images (PostgreSQL fallback when MongoDB unavailable on Vercel)
+CREATE TABLE IF NOT EXISTS cow_image_blobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "cowId" UUID NOT NULL UNIQUE REFERENCES cows(id) ON DELETE CASCADE,
+  "contentType" VARCHAR(50) NOT NULL,
+  data BYTEA NOT NULL,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

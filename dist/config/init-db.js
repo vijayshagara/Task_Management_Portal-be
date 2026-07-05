@@ -7,6 +7,7 @@ exports.ensureDbReady = ensureDbReady;
 exports.isDbReady = isDbReady;
 const database_1 = __importDefault(require("./database"));
 const run_migrations_1 = require("../scripts/run-migrations");
+const mongodb_1 = require("./mongodb");
 let ready = false;
 let initPromise = null;
 /**
@@ -20,6 +21,7 @@ async function ensureDbReady() {
         initPromise = (async () => {
             await database_1.default.authenticate();
             await (0, run_migrations_1.runMigrations)();
+            await (0, mongodb_1.ensureMongoConnected)();
             ready = true;
         })().catch((err) => {
             initPromise = null;

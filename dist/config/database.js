@@ -40,6 +40,7 @@ const push_token_model_1 = __importDefault(require("../models/push-token.model")
 const device_api_key_model_1 = __importDefault(require("../models/device-api-key.model"));
 const password_reset_model_1 = __importDefault(require("../models/password-reset.model"));
 const refresh_token_model_1 = __importDefault(require("../models/refresh-token.model"));
+const cow_image_blob_model_1 = __importDefault(require("../models/cow-image-blob.model"));
 const sequelize = new sequelize_typescript_1.Sequelize({
     database: env_1.default.DB_NAME,
     username: env_1.default.DB_USER,
@@ -83,6 +84,7 @@ const sequelize = new sequelize_typescript_1.Sequelize({
         device_api_key_model_1.default,
         password_reset_model_1.default,
         refresh_token_model_1.default,
+        cow_image_blob_model_1.default,
     ],
     dialectOptions: env_1.default.DB_SSL
         ? {

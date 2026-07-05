@@ -2,7 +2,6 @@ import { Cow, CowGender } from '../models/cow.model';
 import { z } from 'zod';
 import { Transaction, WhereOptions } from 'sequelize';
 import sequelize from '../config/database';
-import { isMongoConnected } from '../config/mongodb';
 import { CowImageService } from './cow-image.service';
 import HealthRecord from '../models/health-record.model';
 import HeatCycle from '../models/heat-cycle.model';
@@ -101,8 +100,8 @@ export class CowService {
     const cow = await this.getCowById(id, userId, role);
     if (!cow) return false;
 
-    if (cow.image && isMongoConnected()) {
-      await CowImageService.deleteByFileId(cow.image);
+    if (cow.image) {
+      await CowImageService.deleteByFileId(cow.image).catch(() => {});
     }
 
     const deletedCount = await sequelize.transaction(async (transaction: Transaction) => {

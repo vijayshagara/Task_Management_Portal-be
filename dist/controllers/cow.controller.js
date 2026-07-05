@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CowController = void 0;
 const cow_service_1 = require("../services/cow.service");
 const cow_image_service_1 = require("../services/cow-image.service");
-const mongodb_1 = require("../config/mongodb");
 class CowController {
     static async getAllCows(req, res) {
         try {
@@ -65,10 +64,6 @@ class CowController {
     }
     static async uploadCowImage(req, res) {
         try {
-            if (!(0, mongodb_1.isMongoConnected)()) {
-                res.status(503).json({ message: 'Image storage is not configured. Set MONGODB_URI in .env' });
-                return;
-            }
             if (!req.file) {
                 res.status(400).json({ message: 'No image file provided' });
                 return;
@@ -88,16 +83,12 @@ class CowController {
     }
     static async getCowImage(req, res) {
         try {
-            if (!(0, mongodb_1.isMongoConnected)()) {
-                res.status(503).json({ message: 'Image storage is not configured' });
-                return;
-            }
             const cow = await cow_service_1.CowService.getCowById(req.params.id);
             if (!cow || !cow.image) {
                 res.status(404).json({ message: 'Image not found' });
                 return;
             }
-            const { stream, contentType } = await cow_image_service_1.CowImageService.getCowImageStream(cow.image);
+            const { stream, contentType } = await cow_image_service_1.CowImageService.getCowImageStream(cow.image, cow.id);
             res.setHeader('Content-Type', contentType);
             res.setHeader('Cache-Control', 'public, max-age=86400');
             stream.pipe(res);
