@@ -1,5 +1,4 @@
 import { Readable } from 'stream';
-import type { Express } from 'express';
 import { GridFSBucket, ObjectId } from 'mongodb';
 import sharp from 'sharp';
 import { ensureMongoConnected, getMongoDb } from '../config/mongodb';
@@ -8,6 +7,13 @@ import CowImageBlob from '../models/cow-image-blob.model';
 const BUCKET_NAME = 'cow_images';
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const PG_PREFIX = 'pg:';
+
+/** Minimal upload file shape (avoids Express.Multer namespace issues with ts-node). */
+export interface CowImageUpload {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+}
 
 export class CowImageService {
   private static getBucket(): GridFSBucket {
@@ -67,7 +73,7 @@ export class CowImageService {
 
   public static async uploadCowImage(
     cowId: string,
-    file: Express.Multer.File,
+    file: CowImageUpload,
     existingFileId?: string | null
   ): Promise<string> {
     this.validateFile(file.mimetype, file.size);
