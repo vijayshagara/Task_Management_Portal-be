@@ -3,10 +3,16 @@ import { HeatCycleController } from '../controllers/heat-cycle.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
+const farmWrite = authMiddleware(['admin', 'farmer']);
 
 // Get all heat cycles
 router.get('/', authMiddleware(['admin']), (req, res, next) => {
   HeatCycleController.getAllHeatCycles(req, res).catch(next);
+});
+
+// Get heat cycles by cow ID (must be before /:id)
+router.get('/cow/:cowId', authMiddleware(['admin', 'farmer']), (req, res, next) => {
+  HeatCycleController.getHeatCyclesByCowId(req, res).catch(next);
 });
 
 // Get heat cycle by ID
@@ -14,13 +20,8 @@ router.get('/:id', authMiddleware(['admin']), (req, res, next) => {
   HeatCycleController.getHeatCycleById(req, res).catch(next);
 });
 
-// Get heat cycles by cow ID
-router.get('/cow/:cowId', authMiddleware(['admin']), (req, res, next) => {
-  HeatCycleController.getHeatCyclesByCowId(req, res).catch(next);
-});
-
-// Create heat cycle
-router.post('/', (req, res, next) => {
+// Create heat cycle — auth required
+router.post('/', farmWrite, (req, res, next) => {
   HeatCycleController.createHeatCycle(req, res).catch(next);
 });
 
@@ -41,6 +42,5 @@ router.post(
     HeatCycleController.confirmHeat(req, res).catch(next);
   }
 );
-
 
 export default router;

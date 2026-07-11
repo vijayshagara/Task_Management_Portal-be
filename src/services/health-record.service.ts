@@ -4,12 +4,10 @@ import { z } from 'zod';
 import sequelize from '../config/database';
 import { sendEmail } from '../services1/notification.service';
 import CowHealthStatus from '../models/cow-health-status.model';
+import { assertCowAccess, cowScopeWhere } from '../utils/farm-access';
 
 export class HealthRecordService {
 
-  // --------------------
-  // VALIDATION SCHEMAS
-  // --------------------
   private static createSchema = z.object({
     cowId: z.string().uuid(),
     temperature: z.number().optional(),
@@ -32,62 +30,60 @@ export class HealthRecordService {
   private static getFeverStatus(
     temperature?: number
   ): 'NORMAL' | 'MILD_FEVER' | 'HIGH_FEVER' {
-
     if (temperature == null) return 'NORMAL';
     if (temperature >= 40) return 'HIGH_FEVER';
     if (temperature >= 39.3) return 'MILD_FEVER';
     return 'NORMAL';
   }
 
-
-  // --------------------
-  // GET ALL HEALTH RECORDS
-  // --------------------
-  public static async getAllHealthRecords(): Promise<HealthRecord[]> {
+  public static async getAllHealthRecords(
+    userId: string,
+    role: string
+  ): Promise<HealthRecord[]> {
+    const cowWhere = cowScopeWhere(userId, role);
     return HealthRecord.findAll({
       order: [['recordedAt', 'DESC']],
       include: [
         {
           model: Cow,
-          attributes: ['id', 'name', 'breed'],
+          attributes: ['id', 'name', 'breed', 'ownerId'],
+          where: Object.keys(cowWhere).length ? cowWhere : undefined,
+          required: true,
         },
       ],
     });
   }
 
-  // --------------------
-  // GET BY ID
-  // --------------------
   public static async getHealthRecordById(
-    id: string
+    id: string,
+    userId: string,
+    role: string
   ): Promise<HealthRecord | null> {
-
-    return HealthRecord.findByPk(id, {
+    const record = await HealthRecord.findByPk(id, {
       include: [
         {
           model: Cow,
-          attributes: ['id', 'name', 'breed'],
+          attributes: ['id', 'name', 'breed', 'ownerId'],
         },
       ],
     });
+    if (!record) return null;
+    await assertCowAccess(record.cowId, userId, role);
+    return record;
   }
 
-  // --------------------
-  // GET BY COW ID
-  // --------------------
   public static async getHealthRecordsByCowId(
-    cowId: string
+    cowId: string,
+    userId: string,
+    role: string
   ): Promise<HealthRecord[]> {
-
+    await assertCowAccess(cowId, userId, role);
     return HealthRecord.findAll({
       where: { cowId },
       order: [['recordedAt', 'DESC']],
     });
   }
 
-  // --------------------
-  // CREATE
-  // --------------------
   public static async createHealthRecord(
     data: {
       cowId: string;
@@ -97,29 +93,25 @@ export class HealthRecordService {
       rumination?: string;
       issue?: string;
       recordedAt?: Date | string;
-    }
+    },
+    userId?: string,
+    role?: string
   ): Promise<HealthRecord> {
-
     const validatedData = this.createSchema.parse(data);
 
     return sequelize.transaction(async (transaction) => {
+      const cow = userId && role
+        ? await assertCowAccess(validatedData.cowId, userId, role)
+        : await Cow.findByPk(validatedData.cowId, { transaction });
 
-      // 1️⃣ Validate cow
-      const cow = await Cow.findByPk(validatedData.cowId, { transaction });
       if (!cow) {
         throw new Error('Cow not found');
       }
 
-      // 2️⃣ Insert history record
       const healthRecord = await HealthRecord.create(validatedData, { transaction });
-
-      // 3️⃣ Determine fever status
       const feverStatus = this.getFeverStatus(validatedData.temperature);
-
-      // 4️⃣ Read previous status (for alert control)
       const previousStatus = await CowHealthStatus.findByPk(cow.id, { transaction });
 
-      // 5️⃣ UPSERT latest health snapshot
       await CowHealthStatus.upsert(
         {
           cowId: cow.id,
@@ -132,12 +124,11 @@ export class HealthRecordService {
         { transaction }
       );
 
-      // 6️⃣ Send alert ONLY on status change + fever
       if (
         feverStatus !== 'NORMAL' &&
         previousStatus?.feverStatus !== feverStatus
       ) {
-        sendEmail(cow.id, cow.name, feverStatus).catch(err => {
+        sendEmail(cow.id, cow.name, feverStatus).catch((err) => {
           console.error('Error sending fever alert email:', err);
         });
       }
@@ -146,11 +137,6 @@ export class HealthRecordService {
     });
   }
 
-
-
-  // --------------------
-  // UPDATE
-  // --------------------
   public static async updateHealthRecord(
     id: string,
     data: Partial<{
@@ -160,25 +146,26 @@ export class HealthRecordService {
       rumination: string;
       issue: string;
       recordedAt: Date | string;
-    }>
+    }>,
+    userId: string,
+    role: string
   ): Promise<HealthRecord | null> {
-
     const validatedData = this.updateSchema.parse(data);
-
     const record = await HealthRecord.findByPk(id);
     if (!record) return null;
-
+    await assertCowAccess(record.cowId, userId, role);
     return record.update(validatedData);
   }
 
-  // --------------------
-  // DELETE
-  // --------------------
-  public static async deleteHealthRecord(id: string): Promise<boolean> {
-    const deleted = await HealthRecord.destroy({
-      where: { id },
-    });
-
+  public static async deleteHealthRecord(
+    id: string,
+    userId: string,
+    role: string
+  ): Promise<boolean> {
+    const record = await HealthRecord.findByPk(id);
+    if (!record) return false;
+    await assertCowAccess(record.cowId, userId, role);
+    const deleted = await HealthRecord.destroy({ where: { id } });
     return deleted > 0;
   }
 }

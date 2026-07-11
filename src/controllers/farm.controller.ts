@@ -219,7 +219,7 @@ export class FarmController {
 
   static async unregisterPush(req: AuthenticatedRequest, res: Response) {
     try {
-      await PushTokenService.unregister(req.body.token);
+      await PushTokenService.unregister(req.body.token, getUserId(req));
       res.json({ message: 'Unregistered' });
     } catch (e) { handleError(res, e); }
   }

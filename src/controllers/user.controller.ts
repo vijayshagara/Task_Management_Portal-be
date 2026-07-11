@@ -36,8 +36,7 @@ export class UserController {
 
   public static async createUser(req: Request, res: Response): Promise<void> {
     try {
-      // const user = await UserService.createUser(req.body);
-      const user = await AuthService.register(req.body);
+      const user = await AuthService.createUserAsAdmin(req.body);
       res.status(201).json(user);
     } catch (error: any) {
       res.status(400).json({ message: error.message });

@@ -11,12 +11,13 @@ router.get('/', auth, (req, res, next) => {
   HealthRecordController.getAllHealthRecords(req, res).catch(next);
 });
 
-router.get('/:id', auth, (req, res, next) => {
-  HealthRecordController.getHealthRecordById(req, res).catch(next);
-});
-
+// Cow-scoped list must be registered before /:id
 router.get('/cow/:cowId', auth, (req, res, next) => {
   HealthRecordController.getHealthRecordsByCowId(req, res).catch(next);
+});
+
+router.get('/:id', auth, (req, res, next) => {
+  HealthRecordController.getHealthRecordById(req, res).catch(next);
 });
 
 router.post('/', farmWrite, (req, res, next) => {

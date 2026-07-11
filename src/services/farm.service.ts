@@ -352,8 +352,8 @@ export class PushTokenService {
     return record;
   }
 
-  static async unregister(token: string) {
-    return PushToken.destroy({ where: { token } });
+  static async unregister(token: string, userId: string) {
+    return PushToken.destroy({ where: { token, userId } });
   }
 
   static async sendToUser(userId: string, title: string, body: string) {

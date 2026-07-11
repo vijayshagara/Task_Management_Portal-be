@@ -60,4 +60,13 @@ export class AuthController {
       res.status(400).json({ message: error.message });
     }
   }
+
+  public static async logout(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const result = await AuthService.logout(req.body.refreshToken, req.user?.id);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  }
 }

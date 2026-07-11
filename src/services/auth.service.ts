@@ -37,6 +37,15 @@ export class AuthService {
     name: z.string().min(3),
     email: z.string().email(),
     password: z.string().min(6),
+    // Public registration never trusts client-supplied privileged roles
+    role: z.enum(['farmer']).default('farmer'),
+    username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  });
+
+  private static adminCreateSchema = z.object({
+    name: z.string().min(3),
+    email: z.string().email(),
+    password: z.string().min(6),
     role: z.enum(['admin', 'developer', 'farmer']).default('farmer'),
     username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
   });
@@ -77,15 +86,15 @@ export class AuthService {
     return token;
   }
 
-  // --------------------
-  // REGISTER
-  // --------------------
-  public static async register(
-    userData: IUser
+  private static async createUserAccount(
+    validatedData: {
+      name: string;
+      email: string;
+      password: string;
+      role: 'admin' | 'developer' | 'farmer';
+      username?: string;
+    }
   ): Promise<Omit<User, 'password'>> {
-
-    const validatedData = this.userSchema.parse(userData);
-
     const existingUser = await User.findOne({
       where: { email: validatedData.email },
     });
@@ -124,10 +133,31 @@ export class AuthService {
 
     await UserSettings.create({ userId: user.id });
 
-    // Remove password before returning
     const { password, ...safeUser } = user.get({ plain: true });
-
     return safeUser as any;
+  }
+
+  // --------------------
+  // REGISTER (public — always farmer)
+  // --------------------
+  public static async register(
+    userData: IUser
+  ): Promise<Omit<User, 'password'>> {
+    const validatedData = this.userSchema.parse({
+      ...userData,
+      role: 'farmer',
+    });
+    return this.createUserAccount(validatedData);
+  }
+
+  // --------------------
+  // ADMIN CREATE USER (privileged roles allowed)
+  // --------------------
+  public static async createUserAsAdmin(
+    userData: IUser
+  ): Promise<Omit<User, 'password'>> {
+    const validatedData = this.adminCreateSchema.parse(userData);
+    return this.createUserAccount(validatedData);
   }
 
   // --------------------
@@ -259,7 +289,17 @@ export class AuthService {
     if (!valid) throw new Error('Current password is incorrect');
 
     await user.update({ password: await bcrypt.hash(validated.newPassword, SALT_ROUNDS) });
+    await RefreshToken.destroy({ where: { userId: user.id } });
     return { message: 'Password changed successfully' };
+  }
+
+  public static async logout(refreshToken?: string, userId?: string) {
+    if (refreshToken) {
+      await RefreshToken.destroy({ where: { token: refreshToken } });
+    } else if (userId) {
+      await RefreshToken.destroy({ where: { userId } });
+    }
+    return { message: 'Logged out successfully' };
   }
 
   // --------------------

@@ -1,58 +1,74 @@
 import { Request, Response } from 'express';
 import { HealthRecordService } from '../services/health-record.service';
+import { AuthenticatedRequest, getUserId } from '../interfaces/auth.interface';
 
 export class HealthRecordController {
 
-  // Get all health records
-  public static async getAllHealthRecords(req: Request, res: Response): Promise<void> {
+  public static async getAllHealthRecords(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const records = await HealthRecordService.getAllHealthRecords();
+      const records = await HealthRecordService.getAllHealthRecords(
+        getUserId(req),
+        req.user!.role
+      );
       res.json(records);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   }
 
-  // Get health record by ID
-  public static async getHealthRecordById(req: Request, res: Response): Promise<void> {
+  public static async getHealthRecordById(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const record = await HealthRecordService.getHealthRecordById(req.params.id);
+      const record = await HealthRecordService.getHealthRecordById(
+        req.params.id,
+        getUserId(req),
+        req.user!.role
+      );
       if (!record) {
         res.status(404).json({ message: 'Health record not found' });
         return;
       }
       res.json(record);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      const status = error.message?.includes('access') ? 403 : 500;
+      res.status(status).json({ message: error.message });
     }
   }
 
-  // Get health records by cow ID
-  public static async getHealthRecordsByCowId(req: Request, res: Response): Promise<void> {
+  public static async getHealthRecordsByCowId(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const records = await HealthRecordService.getHealthRecordsByCowId(req.params.cowId);
+      const records = await HealthRecordService.getHealthRecordsByCowId(
+        req.params.cowId,
+        getUserId(req),
+        req.user!.role
+      );
       res.json(records);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      const status = error.message?.includes('access') || error.message?.includes('not found') ? 403 : 500;
+      res.status(status).json({ message: error.message });
     }
   }
 
-  // Create health record (admin / app)
-  public static async createHealthRecord(req: Request, res: Response): Promise<void> {
+  public static async createHealthRecord(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const record = await HealthRecordService.createHealthRecord(req.body);
+      const record = await HealthRecordService.createHealthRecord(
+        req.body,
+        getUserId(req),
+        req.user!.role
+      );
       res.status(201).json(record);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      const status = error.message?.includes('access') ? 403 : 400;
+      res.status(status).json({ message: error.message });
     }
   }
 
-  // Update health record
-  public static async updateHealthRecord(req: Request, res: Response): Promise<void> {
+  public static async updateHealthRecord(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const record = await HealthRecordService.updateHealthRecord(
         req.params.id,
-        req.body
+        req.body,
+        getUserId(req),
+        req.user!.role
       );
 
       if (!record) {
@@ -62,14 +78,18 @@ export class HealthRecordController {
 
       res.json(record);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      const status = error.message?.includes('access') ? 403 : 400;
+      res.status(status).json({ message: error.message });
     }
   }
 
-  // Delete health record
-  public static async deleteHealthRecord(req: Request, res: Response): Promise<void> {
+  public static async deleteHealthRecord(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const success = await HealthRecordService.deleteHealthRecord(req.params.id);
+      const success = await HealthRecordService.deleteHealthRecord(
+        req.params.id,
+        getUserId(req),
+        req.user!.role
+      );
 
       if (!success) {
         res.status(404).json({ message: 'Health record not found' });
@@ -78,18 +98,15 @@ export class HealthRecordController {
 
       res.json({ message: 'Health record deleted successfully' });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      const status = error.message?.includes('access') ? 403 : 500;
+      res.status(status).json({ message: error.message });
     }
   }
 
-  // Create health record from IoT device (ESP32)
   public static async createFromDevice(req: Request, res: Response): Promise<void> {
     try {
       const record = await HealthRecordService.createHealthRecord(req.body);
-      res.status(201).json({
-        message: 'Health data received from device',
-        data: record,
-      });
+      res.status(201).json(record);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
