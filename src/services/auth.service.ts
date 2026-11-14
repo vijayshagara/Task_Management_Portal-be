@@ -34,12 +34,24 @@ export class AuthService {
   // VALIDATION SCHEMAS
   // --------------------
   private static userSchema = z.object({
-    name: z.string().min(3),
-    email: z.string().email(),
-    password: z.string().min(6),
-    // Public registration never trusts client-supplied privileged roles
-    role: z.enum(['farmer']).default('farmer'),
-    username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
+      name: z.string().min(3),
+      email: z.string().email(),
+      password: z.string().min(6),
+      // Public registration never trusts client-supplied privileged roles
+      role: z.enum(['farmer']).default('farmer'),
+      username: z
+        .preprocess(
+          (val) =>
+            (typeof val === 'string'
+              ? val.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
+              : val) || undefined,
+          z
+            .string()
+            .min(3, 'Username must be at least 3 characters')
+            .max(30, 'Username must be at most 30 characters')
+            .regex(/^[a-zA-Z0-9_.-]+$/, 'Username can only contain letters, numbers, underscores, dots and hyphens')
+            .optional()
+        ),
   });
 
   private static adminCreateSchema = z.object({
@@ -47,7 +59,19 @@ export class AuthService {
     email: z.string().email(),
     password: z.string().min(6),
     role: z.enum(['admin', 'developer', 'farmer']).default('farmer'),
-    username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
+    username: z
+      .preprocess(
+        (val) =>
+          (typeof val === 'string'
+            ? val.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
+            : val) || undefined,
+        z
+          .string()
+          .min(3, 'Username must be at least 3 characters')
+          .max(30, 'Username must be at most 30 characters')
+          .regex(/^[a-zA-Z0-9_.-]+$/, 'Username can only contain letters, numbers, underscores, dots and hyphens')
+          .optional()
+      ),
   });
 
   private static loginSchema = z.object({

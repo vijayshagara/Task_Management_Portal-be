@@ -12,6 +12,8 @@ import {
   AnalyticsService,
   HealthInsightsService,
 } from '../services/farm.service';
+import { parseBulkIds } from '../utils/bulk';
+import { z } from 'zod';
 
 function handleError(res: Response, error: unknown) {
   const message = error instanceof Error ? error.message : 'Unknown error';
@@ -57,6 +59,13 @@ export class FarmController {
     } catch (e) { handleError(res, e); }
   }
 
+  static async bulkDeleteDiary(req: AuthenticatedRequest, res: Response) {
+    try {
+      const ids = parseBulkIds(req.body);
+      res.json(await FarmDiaryService.bulkDelete(ids, getUserId(req), req.user!.role));
+    } catch (e) { handleError(res, e); }
+  }
+
   // ─── Milk ───────────────────────────────────────────────────
   static async listMilk(req: AuthenticatedRequest, res: Response) {
     try {
@@ -80,6 +89,13 @@ export class FarmController {
       const ok = await MilkRecordService.delete(req.params.id, getUserId(req), req.user!.role);
       if (!ok) { res.status(404).json({ message: 'Record not found' }); return; }
       res.json({ message: 'Deleted' });
+    } catch (e) { handleError(res, e); }
+  }
+
+  static async bulkDeleteMilk(req: AuthenticatedRequest, res: Response) {
+    try {
+      const ids = parseBulkIds(req.body);
+      res.json(await MilkRecordService.bulkDelete(ids, getUserId(req), req.user!.role));
     } catch (e) { handleError(res, e); }
   }
 
@@ -123,6 +139,31 @@ export class FarmController {
       const ok = await VaccinationService.delete(req.params.id, getUserId(req), req.user!.role);
       if (!ok) { res.status(404).json({ message: 'Not found' }); return; }
       res.json({ message: 'Deleted' });
+    } catch (e) { handleError(res, e); }
+  }
+
+  static async bulkDeleteVaccinations(req: AuthenticatedRequest, res: Response) {
+    try {
+      const ids = parseBulkIds(req.body);
+      res.json(await VaccinationService.bulkDelete(ids, getUserId(req), req.user!.role));
+    } catch (e) { handleError(res, e); }
+  }
+
+  static async bulkCompleteVaccinations(req: AuthenticatedRequest, res: Response) {
+    try {
+      const schema = z.object({
+        ids: z.array(z.string().uuid()).min(1).max(500),
+        administeredDate: z.string().optional(),
+      });
+      const { ids, administeredDate } = schema.parse(req.body);
+      res.json(
+        await VaccinationService.bulkComplete(
+          ids,
+          getUserId(req),
+          req.user!.role,
+          administeredDate
+        )
+      );
     } catch (e) { handleError(res, e); }
   }
 
@@ -184,6 +225,13 @@ export class FarmController {
     } catch (e) { handleError(res, e); }
   }
 
+  static async bulkDeleteCollections(req: AuthenticatedRequest, res: Response) {
+    try {
+      const ids = parseBulkIds(req.body);
+      res.json(await MilkCollectionService.bulkDelete(ids, getUserId(req), req.user!.role));
+    } catch (e) { handleError(res, e); }
+  }
+
   // ─── Knowledge ──────────────────────────────────────────────
   static async listKnowledge(req: AuthenticatedRequest, res: Response) {
     try {
@@ -242,6 +290,13 @@ export class FarmController {
       const ok = await DeviceApiKeyService.revoke(req.params.id, getUserId(req));
       if (!ok) { res.status(404).json({ message: 'Not found' }); return; }
       res.json({ message: 'Revoked' });
+    } catch (e) { handleError(res, e); }
+  }
+
+  static async bulkRevokeDevices(req: AuthenticatedRequest, res: Response) {
+    try {
+      const ids = parseBulkIds(req.body);
+      res.json(await DeviceApiKeyService.bulkRevoke(ids, getUserId(req)));
     } catch (e) { handleError(res, e); }
   }
 

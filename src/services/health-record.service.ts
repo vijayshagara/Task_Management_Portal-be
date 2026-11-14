@@ -1,10 +1,12 @@
 import HealthRecord from '../models/health-record.model';
 import { Cow } from '../models/cow.model';
 import { z } from 'zod';
+import { Op } from 'sequelize';
 import sequelize from '../config/database';
 import { sendEmail } from '../services1/notification.service';
 import CowHealthStatus from '../models/cow-health-status.model';
 import { assertCowAccess, cowScopeWhere } from '../utils/farm-access';
+import { BulkMutationResult } from '../utils/bulk';
 
 export class HealthRecordService {
 
@@ -167,5 +169,33 @@ export class HealthRecordService {
     await assertCowAccess(record.cowId, userId, role);
     const deleted = await HealthRecord.destroy({ where: { id } });
     return deleted > 0;
+  }
+
+  public static async bulkDeleteHealthRecords(
+    ids: string[],
+    userId: string,
+    role: string
+  ): Promise<BulkMutationResult> {
+    const uniqueIds = [...new Set(ids)];
+    const cowWhere = cowScopeWhere(userId, role);
+    const records = await HealthRecord.findAll({
+      where: { id: { [Op.in]: uniqueIds } },
+      include: [
+        {
+          model: Cow,
+          attributes: ['id', 'ownerId'],
+          where: Object.keys(cowWhere).length ? cowWhere : undefined,
+          required: true,
+        },
+      ],
+      attributes: ['id'],
+    });
+    const allowedIds = records.map((r) => r.id);
+    if (!allowedIds.length) return { ids: [], count: 0 };
+
+    const count = await HealthRecord.destroy({
+      where: { id: { [Op.in]: allowedIds } },
+    });
+    return { ids: allowedIds, count };
   }
 }

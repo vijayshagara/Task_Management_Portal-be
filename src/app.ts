@@ -19,25 +19,47 @@ import { ensureDbReady } from './config/init-db';
 const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
   "https://task-management-portal-be.vercel.app",
   "https://toral-cattle-farm.netlify.app",
   "https://toral-cattle-farm.netlify.app/",
 ];
+
+/** Vite may bind 5173+ when multiple instances run; allow local dev hosts. */
+function isAllowedOrigin(origin?: string | null): boolean {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (config.NODE_ENV !== 'production') {
+    try {
+      const url = new URL(origin);
+      if (
+        (url.hostname === 'localhost' || url.hostname === '127.0.0.1') &&
+        url.protocol === 'http:'
+      ) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function corsOrigin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+  // Use false (not Error) so rejected origins get a clean CORS failure, not HTTP 500
+  callback(null, isAllowedOrigin(origin));
+}
+
 // --------------------
 // Middleware
 // --------------------
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // allow requests with no origin (Postman, mobile apps)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: corsOrigin,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -45,11 +67,7 @@ app.use(
 app.options(
   /.*/,
   cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error("Not allowed by CORS"));
-    },
+    origin: corsOrigin,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })

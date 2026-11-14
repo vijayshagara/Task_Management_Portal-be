@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { HealthRecordService } from '../services/health-record.service';
 import { AuthenticatedRequest, getUserId } from '../interfaces/auth.interface';
+import { parseBulkIds } from '../utils/bulk';
 
 export class HealthRecordController {
 
@@ -99,6 +100,21 @@ export class HealthRecordController {
       res.json({ message: 'Health record deleted successfully' });
     } catch (error: any) {
       const status = error.message?.includes('access') ? 403 : 500;
+      res.status(status).json({ message: error.message });
+    }
+  }
+
+  public static async bulkDeleteHealthRecords(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const ids = parseBulkIds(req.body);
+      const result = await HealthRecordService.bulkDeleteHealthRecords(
+        ids,
+        getUserId(req),
+        req.user!.role
+      );
+      res.json(result);
+    } catch (error: any) {
+      const status = error.message?.includes('access') ? 403 : 400;
       res.status(status).json({ message: error.message });
     }
   }

@@ -1,6 +1,8 @@
 import { Response } from 'express';
 import { TaskService } from '../services/task.service';
 import { AuthenticatedRequest, getUserId } from '../interfaces/auth.interface';
+import { parseBulkIds } from '../utils/bulk';
+import { z } from 'zod';
 
 export class TaskController {
   public static async getAllTasks(req: AuthenticatedRequest, res: Response): Promise<Response> {
@@ -65,6 +67,30 @@ export class TaskController {
       return res.json({ message: 'Task deleted successfully' });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
+    }
+  }
+
+  public static async bulkDeleteTasks(req: AuthenticatedRequest, res: Response): Promise<Response> {
+    try {
+      const ids = parseBulkIds(req.body);
+      const result = await TaskService.bulkDeleteTasks(ids);
+      return res.json(result);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
+  }
+
+  public static async bulkUpdateStatus(req: AuthenticatedRequest, res: Response): Promise<Response> {
+    try {
+      const schema = z.object({
+        ids: z.array(z.string().uuid()).min(1).max(500),
+        status: z.enum(['pending', 'in_progress', 'completed']),
+      });
+      const { ids, status } = schema.parse(req.body);
+      const result = await TaskService.bulkUpdateStatus(ids, status);
+      return res.json(result);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
     }
   }
 }

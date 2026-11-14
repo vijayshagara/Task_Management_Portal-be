@@ -11,6 +11,10 @@ router.get('/', auth, (req, res, next) => {
   CowController.getAllCows(req, res).catch(next);
 });
 
+router.post('/bulk-delete', farmWrite, (req, res, next) => {
+  CowController.bulkDeleteCows(req, res).catch(next);
+});
+
 router.get('/:id/image', (req, res, next) => {
   CowController.getCowImage(req, res).catch(next);
 });

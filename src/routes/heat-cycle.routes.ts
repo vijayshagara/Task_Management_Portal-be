@@ -15,6 +15,14 @@ router.get('/cow/:cowId', authMiddleware(['admin', 'farmer']), (req, res, next) 
   HeatCycleController.getHeatCyclesByCowId(req, res).catch(next);
 });
 
+router.post('/bulk-delete', authMiddleware(['admin']), (req, res, next) => {
+  HeatCycleController.bulkDeleteHeatCycles(req, res).catch(next);
+});
+
+router.post('/bulk-confirm', authMiddleware(['admin']), (req, res, next) => {
+  HeatCycleController.bulkConfirmHeat(req, res).catch(next);
+});
+
 // Get heat cycle by ID
 router.get('/:id', authMiddleware(['admin']), (req, res, next) => {
   HeatCycleController.getHeatCycleById(req, res).catch(next);

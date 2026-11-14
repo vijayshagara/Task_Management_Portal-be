@@ -1,6 +1,6 @@
 import { Cow, CowGender } from '../models/cow.model';
 import { z } from 'zod';
-import { Transaction, WhereOptions } from 'sequelize';
+import { Op, Transaction, WhereOptions } from 'sequelize';
 import sequelize from '../config/database';
 import { CowImageService } from './cow-image.service';
 import HealthRecord from '../models/health-record.model';
@@ -8,6 +8,7 @@ import HeatCycle from '../models/heat-cycle.model';
 import HeatSchedule from '../models/heat-schedules.model';
 import CowHealthStatus from '../models/cow-health-status.model';
 import { cowScopeWhere, isAdmin } from '../utils/farm-access';
+import { BulkMutationResult } from '../utils/bulk';
 
 export class CowService {
   private static cowSchema = z.object({
@@ -117,5 +118,52 @@ export class CowService {
     });
 
     return deletedCount > 0;
+  }
+
+  public static async bulkDeleteCows(
+    ids: string[],
+    userId?: string,
+    role?: string
+  ): Promise<BulkMutationResult> {
+    const uniqueIds = [...new Set(ids)];
+    const where: WhereOptions<Cow> = {
+      id: { [Op.in]: uniqueIds },
+      ...(role && userId ? cowScopeWhere(userId, role) : {}),
+    };
+    const cows = await Cow.findAll({ where, attributes: ['id', 'image'] });
+    const allowedIds = cows.map((c) => c.id);
+    if (!allowedIds.length) return { ids: [], count: 0 };
+
+    await Promise.all(
+      cows
+        .filter((c) => c.image)
+        .map((c) => CowImageService.deleteByFileId(c.image!).catch(() => {}))
+    );
+
+    const count = await sequelize.transaction(async (transaction: Transaction) => {
+      await HeatSchedule.destroy({
+        where: { cowId: { [Op.in]: allowedIds } },
+        transaction,
+      });
+      await HeatCycle.destroy({
+        where: { cowId: { [Op.in]: allowedIds } },
+        transaction,
+      });
+      await HealthRecord.destroy({
+        where: { cowId: { [Op.in]: allowedIds } },
+        transaction,
+      });
+      await CowHealthStatus.destroy({
+        where: { cowId: { [Op.in]: allowedIds } },
+        transaction,
+      });
+
+      return Cow.destroy({
+        where: { id: { [Op.in]: allowedIds } },
+        transaction,
+      });
+    });
+
+    return { ids: allowedIds, count };
   }
 }

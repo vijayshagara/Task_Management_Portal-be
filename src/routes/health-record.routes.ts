@@ -16,6 +16,10 @@ router.get('/cow/:cowId', auth, (req, res, next) => {
   HealthRecordController.getHealthRecordsByCowId(req, res).catch(next);
 });
 
+router.post('/bulk-delete', farmWrite, (req, res, next) => {
+  HealthRecordController.bulkDeleteHealthRecords(req, res).catch(next);
+});
+
 router.get('/:id', auth, (req, res, next) => {
   HealthRecordController.getHealthRecordById(req, res).catch(next);
 });

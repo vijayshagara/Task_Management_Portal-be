@@ -8,6 +8,7 @@ const auth = authMiddleware([]);
 // Farm Diary
 router.get('/diary', auth, (req, res, next) => FarmController.listDiary(req, res).catch(next));
 router.post('/diary', auth, (req, res, next) => FarmController.createDiary(req, res).catch(next));
+router.post('/diary/bulk-delete', auth, (req, res, next) => FarmController.bulkDeleteDiary(req, res).catch(next));
 router.put('/diary/:id', auth, (req, res, next) => FarmController.updateDiary(req, res).catch(next));
 router.delete('/diary/:id', auth, (req, res, next) => FarmController.deleteDiary(req, res).catch(next));
 
@@ -15,12 +16,15 @@ router.delete('/diary/:id', auth, (req, res, next) => FarmController.deleteDiary
 router.get('/milk', auth, (req, res, next) => FarmController.listMilk(req, res).catch(next));
 router.get('/milk/trends', auth, (req, res, next) => FarmController.milkTrends(req, res).catch(next));
 router.post('/milk', auth, (req, res, next) => FarmController.createMilk(req, res).catch(next));
+router.post('/milk/bulk-delete', auth, (req, res, next) => FarmController.bulkDeleteMilk(req, res).catch(next));
 router.delete('/milk/:id', auth, (req, res, next) => FarmController.deleteMilk(req, res).catch(next));
 
 // Vaccinations
 router.get('/vaccinations', auth, (req, res, next) => FarmController.listVaccinations(req, res).catch(next));
 router.get('/vaccinations/upcoming', auth, (req, res, next) => FarmController.upcomingVaccinations(req, res).catch(next));
 router.post('/vaccinations', auth, (req, res, next) => FarmController.createVaccination(req, res).catch(next));
+router.post('/vaccinations/bulk-delete', auth, (req, res, next) => FarmController.bulkDeleteVaccinations(req, res).catch(next));
+router.post('/vaccinations/bulk-complete', auth, (req, res, next) => FarmController.bulkCompleteVaccinations(req, res).catch(next));
 router.put('/vaccinations/:id', auth, (req, res, next) => FarmController.updateVaccination(req, res).catch(next));
 router.delete('/vaccinations/:id', auth, (req, res, next) => FarmController.deleteVaccination(req, res).catch(next));
 
@@ -33,6 +37,7 @@ router.post('/pregnancies/:id/calving', auth, (req, res, next) => FarmController
 // Milk Collections (Cooperative)
 router.get('/collections', auth, (req, res, next) => FarmController.listCollections(req, res).catch(next));
 router.post('/collections', auth, (req, res, next) => FarmController.createCollection(req, res).catch(next));
+router.post('/collections/bulk-delete', auth, (req, res, next) => FarmController.bulkDeleteCollections(req, res).catch(next));
 router.put('/collections/:id', auth, (req, res, next) => FarmController.updateCollection(req, res).catch(next));
 router.delete('/collections/:id', auth, (req, res, next) => FarmController.deleteCollection(req, res).catch(next));
 
@@ -48,6 +53,7 @@ router.post('/push/unregister', auth, (req, res, next) => FarmController.unregis
 // IoT Device Keys
 router.get('/devices', auth, (req, res, next) => FarmController.listDevices(req, res).catch(next));
 router.post('/devices', auth, (req, res, next) => FarmController.createDevice(req, res).catch(next));
+router.post('/devices/bulk-revoke', auth, (req, res, next) => FarmController.bulkRevokeDevices(req, res).catch(next));
 router.delete('/devices/:id', auth, (req, res, next) => FarmController.revokeDevice(req, res).catch(next));
 
 // Analytics & Health Insights

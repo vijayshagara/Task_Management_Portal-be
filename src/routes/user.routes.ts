@@ -12,6 +12,10 @@ router.get('/developers', authMiddleware(['admin']), (req, res, next) => {
   UserController.getDevelopers(req, res).catch(next);
 });
 
+router.post('/bulk-delete', authMiddleware(['admin']), (req, res, next) => {
+  UserController.bulkDeleteUsers(req, res).catch(next);
+});
+
 router.get('/:id', authMiddleware(['admin']), (req, res, next) => {
   UserController.getUserById(req, res).catch(next);
 });

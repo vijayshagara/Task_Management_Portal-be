@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { HeatCycleService } from '../services/heat-cycle.service';
+import { parseBulkIds } from '../utils/bulk';
 
 export class HeatCycleController {
 
@@ -69,6 +70,16 @@ export class HeatCycleController {
     }
   }
 
+  public static async bulkDeleteHeatCycles(req: Request, res: Response): Promise<void> {
+    try {
+      const ids = parseBulkIds(req.body);
+      const result = await HeatCycleService.bulkDeleteHeatCycles(ids);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+
   public static async confirmHeat(
     req: Request,
     res: Response
@@ -86,6 +97,16 @@ export class HeatCycleController {
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  }
+
+  public static async bulkConfirmHeat(req: Request, res: Response): Promise<void> {
+    try {
+      const ids = parseBulkIds(req.body);
+      const result = await HeatCycleService.bulkConfirmHeat(ids);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
   }
 

@@ -12,7 +12,18 @@ import { SocialMediaService } from './social-media.service';
 
 const updateProfileSchema = z.object({
   name: z.string().min(2).optional(),
-  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  username: z.preprocess(
+    (val) =>
+      (typeof val === 'string'
+        ? val.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
+        : val) || undefined,
+    z
+      .string()
+      .min(3, 'Username must be at least 3 characters')
+      .max(30, 'Username must be at most 30 characters')
+      .regex(/^[a-zA-Z0-9_.-]+$/, 'Username can only contain letters, numbers, underscores, dots and hyphens')
+      .optional()
+  ),
   bio: z.string().max(500).optional(),
   farmName: z.string().max(100).optional(),
   location: z.string().max(100).optional(),

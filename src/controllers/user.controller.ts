@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { UserService } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
+import { AuthenticatedRequest, getUserId } from '../interfaces/auth.interface';
+import { parseBulkIds } from '../utils/bulk';
 
 export class UserController {
   public static async getAllUsers(req: Request, res: Response): Promise<void> {
@@ -66,6 +68,16 @@ export class UserController {
       res.json({ message: 'User deleted successfully' });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  }
+
+  public static async bulkDeleteUsers(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const ids = parseBulkIds(req.body);
+      const result = await UserService.bulkDeleteUsers(ids, getUserId(req));
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
   }
 }

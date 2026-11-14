@@ -6,7 +6,9 @@ import { Cow } from '../models/cow.model';
 import HeatSchedule from '../models/heat-schedules.model';
 import { HeatSchedulerService } from './heat-scheduler.service';
 import { z } from 'zod';
+import { Op } from 'sequelize';
 import sequelize from '../config/database';
+import { BulkMutationResult } from '../utils/bulk';
 
 export class HeatCycleService {
 
@@ -177,6 +179,21 @@ export class HeatCycleService {
     return deletedCount > 0;
   }
 
+  public static async bulkDeleteHeatCycles(ids: string[]): Promise<BulkMutationResult> {
+    const uniqueIds = [...new Set(ids)];
+    const count = await sequelize.transaction(async (transaction) => {
+      await HeatSchedule.destroy({
+        where: { heatCycleId: { [Op.in]: uniqueIds } },
+        transaction,
+      });
+      return HeatCycle.destroy({
+        where: { id: { [Op.in]: uniqueIds } },
+        transaction,
+      });
+    });
+    return { ids: uniqueIds, count };
+  }
+
   // --------------------
   // CONFIRM HEAT
   // --------------------
@@ -209,6 +226,56 @@ export class HeatCycleService {
       );
 
       return true;
+    });
+  }
+
+  public static async bulkConfirmHeat(
+    ids: string[]
+  ): Promise<{ ids: string[]; count: number; items: HeatCycle[] }> {
+    const uniqueIds = [...new Set(ids)];
+
+    return sequelize.transaction(async (transaction) => {
+      const pending = await HeatCycle.findAll({
+        where: {
+          id: { [Op.in]: uniqueIds },
+          status: HeatCycleStatus.PENDING,
+        },
+        attributes: ['id'],
+        transaction,
+      });
+      const confirmIds = pending.map((c) => c.id);
+      if (!confirmIds.length) return { ids: [], count: 0, items: [] };
+
+      const now = new Date();
+      await HeatCycle.update(
+        {
+          status: HeatCycleStatus.CONFIRMED,
+          confirmedAt: now,
+        },
+        {
+          where: { id: { [Op.in]: confirmIds } },
+          transaction,
+        }
+      );
+
+      await HeatSchedule.update(
+        { status: 'CANCELLED' },
+        {
+          where: {
+            heatCycleId: { [Op.in]: confirmIds },
+            status: 'SCHEDULED',
+          },
+          transaction,
+        }
+      );
+
+      const items = await HeatCycle.findAll({
+        where: { id: { [Op.in]: confirmIds } },
+        include: [{ model: Cow, attributes: ['id', 'name', 'breed'] }],
+        transaction,
+      });
+
+      return { ids: confirmIds, count: confirmIds.length, items };
     });
   }
 }

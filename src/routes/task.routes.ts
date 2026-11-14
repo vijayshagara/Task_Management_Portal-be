@@ -6,6 +6,8 @@ const router = Router();
 
 router.get('/', authMiddleware(['admin']), (req, res, next) => { TaskController.getAllTasks(req, res).catch(next) });
 router.get('/developer', authMiddleware(['developer']), (req, res, next) => { TaskController.getDeveloperTasks(req, res).catch(next) });
+router.post('/bulk-delete', authMiddleware(['admin']), (req, res, next) => { TaskController.bulkDeleteTasks(req, res).catch(next) });
+router.post('/bulk-status', authMiddleware(['admin', 'developer']), (req, res, next) => { TaskController.bulkUpdateStatus(req, res).catch(next) });
 router.get('/:id', authMiddleware(['admin', 'developer']), (req, res, next) => { TaskController.getTaskById(req, res).catch(next) });
 router.post('/', authMiddleware(['admin']), (req, res, next) => { TaskController.createTask(req, res).catch(next) });
 router.put('/:id', authMiddleware(['admin', 'developer']), (req, res, next) => { TaskController.updateTask(req, res).catch(next) });

@@ -13,8 +13,15 @@ import { Cow } from '../models/cow.model';
 import HealthRecord from '../models/health-record.model';
 import HeatCycle from '../models/heat-cycle.model';
 import { assertCowAccess, cowScopeWhere, isAdmin } from '../utils/farm-access';
+import { BulkMutationResult } from '../utils/bulk';
 
 const cowInclude = { model: Cow, attributes: ['id', 'name', 'breed'] };
+
+function scopedIdWhere(ids: string[], userId: string, role: string): Record<string, unknown> {
+  const where: Record<string, unknown> = { id: { [Op.in]: [...new Set(ids)] } };
+  if (!isAdmin(role)) where.userId = userId;
+  return where;
+}
 
 // ─── Farm Diary ───────────────────────────────────────────────
 
@@ -72,6 +79,15 @@ export class FarmDiaryService {
     await entry.destroy();
     return true;
   }
+
+  static async bulkDelete(ids: string[], userId: string, role: string): Promise<BulkMutationResult> {
+    const where = scopedIdWhere(ids, userId, role);
+    const existing = await FarmDiary.findAll({ where, attributes: ['id'] });
+    const allowedIds = existing.map((e) => e.id);
+    if (!allowedIds.length) return { ids: [], count: 0 };
+    const count = await FarmDiary.destroy({ where: { id: { [Op.in]: allowedIds } } });
+    return { ids: allowedIds, count };
+  }
 }
 
 // ─── Milk Records ─────────────────────────────────────────────
@@ -110,6 +126,15 @@ export class MilkRecordService {
     if (!isAdmin(role) && record.userId !== userId) throw new Error('Access denied');
     await record.destroy();
     return true;
+  }
+
+  static async bulkDelete(ids: string[], userId: string, role: string): Promise<BulkMutationResult> {
+    const where = scopedIdWhere(ids, userId, role);
+    const existing = await MilkRecord.findAll({ where, attributes: ['id'] });
+    const allowedIds = existing.map((e) => e.id);
+    if (!allowedIds.length) return { ids: [], count: 0 };
+    const count = await MilkRecord.destroy({ where: { id: { [Op.in]: allowedIds } } });
+    return { ids: allowedIds, count };
   }
 
   static async getTrends(userId: string, role: string, days = 30) {
@@ -173,6 +198,45 @@ export class VaccinationService {
     if (!isAdmin(role) && record.userId !== userId) throw new Error('Access denied');
     await record.destroy();
     return true;
+  }
+
+  static async bulkDelete(ids: string[], userId: string, role: string): Promise<BulkMutationResult> {
+    const where = scopedIdWhere(ids, userId, role);
+    const existing = await Vaccination.findAll({ where, attributes: ['id'] });
+    const allowedIds = existing.map((e) => e.id);
+    if (!allowedIds.length) return { ids: [], count: 0 };
+    const count = await Vaccination.destroy({ where: { id: { [Op.in]: allowedIds } } });
+    return { ids: allowedIds, count };
+  }
+
+  static async bulkComplete(
+    ids: string[],
+    userId: string,
+    role: string,
+    administeredDate?: string
+  ): Promise<{ ids: string[]; count: number; items: Vaccination[] }> {
+    const where = {
+      ...scopedIdWhere(ids, userId, role),
+      status: VaccinationStatus.SCHEDULED,
+    };
+    const existing = await Vaccination.findAll({ where, attributes: ['id'] });
+    const allowedIds = existing.map((e) => e.id);
+    if (!allowedIds.length) return { ids: [], count: 0, items: [] };
+
+    const date = administeredDate ? new Date(administeredDate) : new Date();
+    await Vaccination.update(
+      {
+        status: VaccinationStatus.COMPLETED,
+        administeredDate: date,
+      },
+      { where: { id: { [Op.in]: allowedIds } } }
+    );
+
+    const items = await Vaccination.findAll({
+      where: { id: { [Op.in]: allowedIds } },
+      include: [cowInclude],
+    });
+    return { ids: allowedIds, count: allowedIds.length, items };
   }
 
   static async getUpcoming(userId: string, role: string, days = 14) {
@@ -297,6 +361,15 @@ export class MilkCollectionService {
     await record.destroy();
     return true;
   }
+
+  static async bulkDelete(ids: string[], userId: string, role: string): Promise<BulkMutationResult> {
+    const where = scopedIdWhere(ids, userId, role);
+    const existing = await MilkCollection.findAll({ where, attributes: ['id'] });
+    const allowedIds = existing.map((e) => e.id);
+    if (!allowedIds.length) return { ids: [], count: 0 };
+    const count = await MilkCollection.destroy({ where: { id: { [Op.in]: allowedIds } } });
+    return { ids: allowedIds, count };
+  }
 }
 
 // ─── Knowledge Base ───────────────────────────────────────────
@@ -388,6 +461,22 @@ export class DeviceApiKeyService {
     if (!key || key.userId !== userId) return false;
     await key.update({ isActive: false });
     return true;
+  }
+
+  static async bulkRevoke(ids: string[], userId: string): Promise<BulkMutationResult> {
+    const uniqueIds = [...new Set(ids)];
+    const existing = await DeviceApiKey.findAll({
+      where: { id: { [Op.in]: uniqueIds }, userId },
+      attributes: ['id'],
+    });
+    const allowedIds = existing.map((e) => e.id);
+    if (!allowedIds.length) return { ids: [], count: 0 };
+
+    const [count] = await DeviceApiKey.update(
+      { isActive: false },
+      { where: { id: { [Op.in]: allowedIds }, userId } }
+    );
+    return { ids: allowedIds, count };
   }
 
   static async validate(apiKey: string): Promise<DeviceApiKey | null> {

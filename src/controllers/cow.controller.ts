@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CowService } from '../services/cow.service';
 import { CowImageService } from '../services/cow-image.service';
 import { AuthenticatedRequest } from '../interfaces/auth.interface';
+import { parseBulkIds } from '../utils/bulk';
 
 export class CowController {
   public static async getAllCows(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -59,6 +60,16 @@ export class CowController {
       res.json({ message: 'Cow deleted successfully' });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  }
+
+  public static async bulkDeleteCows(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const ids = parseBulkIds(req.body);
+      const result = await CowService.bulkDeleteCows(ids, req.user?.id, req.user?.role);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
   }
 

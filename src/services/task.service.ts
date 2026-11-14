@@ -1,7 +1,9 @@
+import { Op } from 'sequelize';
 import { Task } from '../models/task.model';
 import { User } from '../models/user.model';
 import { ITask, ITaskUpdate } from '../interfaces/task.interface';
 import { z } from 'zod';
+import { BulkMutationResult } from '../utils/bulk';
 
 export class TaskService {
   private static taskSchema = z.object({
@@ -12,6 +14,10 @@ export class TaskService {
   });
 
   private static taskUpdateSchema = z.object({
+    status: z.enum(['pending', 'in_progress', 'completed']),
+  });
+
+  private static bulkStatusSchema = z.object({
     status: z.enum(['pending', 'in_progress', 'completed']),
   });
 
@@ -47,5 +53,28 @@ export class TaskService {
   public static async deleteTask(id: string): Promise<boolean> {
     const deleted = await Task.destroy({ where: { id } });
     return deleted > 0;
+  }
+
+  public static async bulkDeleteTasks(ids: string[]): Promise<BulkMutationResult> {
+    const uniqueIds = [...new Set(ids)];
+    const count = await Task.destroy({ where: { id: { [Op.in]: uniqueIds } } });
+    return { ids: uniqueIds, count };
+  }
+
+  public static async bulkUpdateStatus(
+    ids: string[],
+    status: string
+  ): Promise<{ ids: string[]; count: number; items: Task[] }> {
+    const uniqueIds = [...new Set(ids)];
+    const { status: validatedStatus } = this.bulkStatusSchema.parse({ status });
+    const [count] = await Task.update(
+      { status: validatedStatus as Task['status'] },
+      { where: { id: { [Op.in]: uniqueIds } } }
+    );
+    const items = await Task.findAll({
+      where: { id: { [Op.in]: uniqueIds } },
+      include: [{ model: User, as: 'developer' }],
+    });
+    return { ids: items.map((t) => t.id), count, items };
   }
 }
