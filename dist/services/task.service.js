@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TaskService = void 0;
+const sequelize_1 = require("sequelize");
 const task_model_1 = require("../models/task.model");
 const user_model_1 = require("../models/user.model");
 const zod_1 = require("zod");
@@ -33,6 +34,21 @@ class TaskService {
         const deleted = await task_model_1.Task.destroy({ where: { id } });
         return deleted > 0;
     }
+    static async bulkDeleteTasks(ids) {
+        const uniqueIds = [...new Set(ids)];
+        const count = await task_model_1.Task.destroy({ where: { id: { [sequelize_1.Op.in]: uniqueIds } } });
+        return { ids: uniqueIds, count };
+    }
+    static async bulkUpdateStatus(ids, status) {
+        const uniqueIds = [...new Set(ids)];
+        const { status: validatedStatus } = this.bulkStatusSchema.parse({ status });
+        const [count] = await task_model_1.Task.update({ status: validatedStatus }, { where: { id: { [sequelize_1.Op.in]: uniqueIds } } });
+        const items = await task_model_1.Task.findAll({
+            where: { id: { [sequelize_1.Op.in]: uniqueIds } },
+            include: [{ model: user_model_1.User, as: 'developer' }],
+        });
+        return { ids: items.map((t) => t.id), count, items };
+    }
 }
 exports.TaskService = TaskService;
 TaskService.taskSchema = zod_1.z.object({
@@ -42,5 +58,8 @@ TaskService.taskSchema = zod_1.z.object({
     developerId: zod_1.z.string().uuid(),
 });
 TaskService.taskUpdateSchema = zod_1.z.object({
+    status: zod_1.z.enum(['pending', 'in_progress', 'completed']),
+});
+TaskService.bulkStatusSchema = zod_1.z.object({
     status: zod_1.z.enum(['pending', 'in_progress', 'completed']),
 });

@@ -32,27 +32,25 @@ export async function sendEmail(
     text,
   });
 
-  console.log(`📧 Email sent | Cow ${cowId}`);
 }
 
 export async function sendWhatsApp(cowId: string, day: number) {
-  console.log(`💬 WhatsApp sent | ${cowId} | Day ${day}`);
 }
 
 export async function sendSMS(cowId: string, day: number) {
-  console.log(`📱 SMS sent | ${cowId} | Day ${day}`);
 }
 
 export async function sendPushNotification(cowId: string, day: number) {
-  console.log(`🔔 Push sent | ${cowId} | Day ${day}`);
 }
 
 
 export async function createGoogleMeetForUser(
   cowId: string,
   refreshToken: string,
-  day: number
+  day: number,
+  cowName?: string
 ) {
+  const label = cowName?.trim() || cowId;
   const oAuth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID!,
     process.env.GOOGLE_CLIENT_SECRET!
@@ -72,8 +70,8 @@ export async function createGoogleMeetForUser(
   const endTime = new Date(startTime.getTime() + 15 * 60 * 1000);
 
   const event = {
-    summary: `Heat Cycle Reminder – Day ${day}`,
-    description: `Cow ${cowId} heat cycle reminder`,
+    summary: `${label} – Heat Cycle Reminder – Day ${day}`,
+    description: `Cow ${label} (ID: ${cowId}) heat cycle reminder`,
     start: {
       dateTime: startTime.toISOString(),
       timeZone: "Asia/Kolkata",
@@ -100,7 +98,6 @@ export async function createGoogleMeetForUser(
       (ep) => ep.entryPointType === "video"
     )?.uri;
 
-  console.log("🎥 Google Meet created:", meetLink);
   return meetLink;
 }
 

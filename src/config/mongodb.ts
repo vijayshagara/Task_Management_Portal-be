@@ -7,7 +7,6 @@ export async function connectMongo(): Promise<boolean> {
   const uri = process.env.MONGODB_URI;
 
   if (!uri) {
-    console.warn('MONGODB_URI not set — media upload is disabled');
     return false;
   }
 
@@ -17,7 +16,6 @@ export async function connectMongo(): Promise<boolean> {
     client = new MongoClient(uri);
     await client.connect();
     db = client.db();
-    console.log('MongoDB connected for media storage');
     return true;
   } catch (error: any) {
     console.error('MongoDB connection failed:', error.message);

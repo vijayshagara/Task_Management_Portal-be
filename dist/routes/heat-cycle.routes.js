@@ -4,20 +4,27 @@ const express_1 = require("express");
 const heat_cycle_controller_1 = require("../controllers/heat-cycle.controller");
 const auth_middleware_1 = require("../middlewares/auth.middleware");
 const router = (0, express_1.Router)();
+const farmWrite = (0, auth_middleware_1.authMiddleware)(['admin', 'farmer']);
 // Get all heat cycles
 router.get('/', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
     heat_cycle_controller_1.HeatCycleController.getAllHeatCycles(req, res).catch(next);
+});
+// Get heat cycles by cow ID (must be before /:id)
+router.get('/cow/:cowId', (0, auth_middleware_1.authMiddleware)(['admin', 'farmer']), (req, res, next) => {
+    heat_cycle_controller_1.HeatCycleController.getHeatCyclesByCowId(req, res).catch(next);
+});
+router.post('/bulk-delete', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+    heat_cycle_controller_1.HeatCycleController.bulkDeleteHeatCycles(req, res).catch(next);
+});
+router.post('/bulk-confirm', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+    heat_cycle_controller_1.HeatCycleController.bulkConfirmHeat(req, res).catch(next);
 });
 // Get heat cycle by ID
 router.get('/:id', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
     heat_cycle_controller_1.HeatCycleController.getHeatCycleById(req, res).catch(next);
 });
-// Get heat cycles by cow ID
-router.get('/cow/:cowId', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
-    heat_cycle_controller_1.HeatCycleController.getHeatCyclesByCowId(req, res).catch(next);
-});
-// Create heat cycle
-router.post('/', (req, res, next) => {
+// Create heat cycle — auth required
+router.post('/', farmWrite, (req, res, next) => {
     heat_cycle_controller_1.HeatCycleController.createHeatCycle(req, res).catch(next);
 });
 // Update heat cycle

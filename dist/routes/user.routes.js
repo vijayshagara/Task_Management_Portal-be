@@ -10,6 +10,9 @@ router.get('/', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, nex
 router.get('/developers', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
     user_controller_1.UserController.getDevelopers(req, res).catch(next);
 });
+router.post('/bulk-delete', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
+    user_controller_1.UserController.bulkDeleteUsers(req, res).catch(next);
+});
 router.get('/:id', (0, auth_middleware_1.authMiddleware)(['admin']), (req, res, next) => {
     user_controller_1.UserController.getUserById(req, res).catch(next);
 });

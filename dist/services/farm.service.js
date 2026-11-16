@@ -53,6 +53,12 @@ const health_record_model_1 = __importDefault(require("../models/health-record.m
 const heat_cycle_model_1 = __importDefault(require("../models/heat-cycle.model"));
 const farm_access_1 = require("../utils/farm-access");
 const cowInclude = { model: cow_model_1.Cow, attributes: ['id', 'name', 'breed'] };
+function scopedIdWhere(ids, userId, role) {
+    const where = { id: { [sequelize_1.Op.in]: [...new Set(ids)] } };
+    if (!(0, farm_access_1.isAdmin)(role))
+        where.userId = userId;
+    return where;
+}
 // ─── Farm Diary ───────────────────────────────────────────────
 const diarySchema = zod_1.z.object({
     entryDate: zod_1.z.coerce.date(),
@@ -109,6 +115,15 @@ class FarmDiaryService {
         await entry.destroy();
         return true;
     }
+    static async bulkDelete(ids, userId, role) {
+        const where = scopedIdWhere(ids, userId, role);
+        const existing = await farm_diary_model_1.default.findAll({ where, attributes: ['id'] });
+        const allowedIds = existing.map((e) => e.id);
+        if (!allowedIds.length)
+            return { ids: [], count: 0 };
+        const count = await farm_diary_model_1.default.destroy({ where: { id: { [sequelize_1.Op.in]: allowedIds } } });
+        return { ids: allowedIds, count };
+    }
 }
 exports.FarmDiaryService = FarmDiaryService;
 // ─── Milk Records ─────────────────────────────────────────────
@@ -146,6 +161,15 @@ class MilkRecordService {
             throw new Error('Access denied');
         await record.destroy();
         return true;
+    }
+    static async bulkDelete(ids, userId, role) {
+        const where = scopedIdWhere(ids, userId, role);
+        const existing = await milk_record_model_1.default.findAll({ where, attributes: ['id'] });
+        const allowedIds = existing.map((e) => e.id);
+        if (!allowedIds.length)
+            return { ids: [], count: 0 };
+        const count = await milk_record_model_1.default.destroy({ where: { id: { [sequelize_1.Op.in]: allowedIds } } });
+        return { ids: allowedIds, count };
     }
     static async getTrends(userId, role, days = 30) {
         const since = new Date();
@@ -207,6 +231,35 @@ class VaccinationService {
             throw new Error('Access denied');
         await record.destroy();
         return true;
+    }
+    static async bulkDelete(ids, userId, role) {
+        const where = scopedIdWhere(ids, userId, role);
+        const existing = await vaccination_model_1.default.findAll({ where, attributes: ['id'] });
+        const allowedIds = existing.map((e) => e.id);
+        if (!allowedIds.length)
+            return { ids: [], count: 0 };
+        const count = await vaccination_model_1.default.destroy({ where: { id: { [sequelize_1.Op.in]: allowedIds } } });
+        return { ids: allowedIds, count };
+    }
+    static async bulkComplete(ids, userId, role, administeredDate) {
+        const where = {
+            ...scopedIdWhere(ids, userId, role),
+            status: vaccination_model_1.VaccinationStatus.SCHEDULED,
+        };
+        const existing = await vaccination_model_1.default.findAll({ where, attributes: ['id'] });
+        const allowedIds = existing.map((e) => e.id);
+        if (!allowedIds.length)
+            return { ids: [], count: 0, items: [] };
+        const date = administeredDate ? new Date(administeredDate) : new Date();
+        await vaccination_model_1.default.update({
+            status: vaccination_model_1.VaccinationStatus.COMPLETED,
+            administeredDate: date,
+        }, { where: { id: { [sequelize_1.Op.in]: allowedIds } } });
+        const items = await vaccination_model_1.default.findAll({
+            where: { id: { [sequelize_1.Op.in]: allowedIds } },
+            include: [cowInclude],
+        });
+        return { ids: allowedIds, count: allowedIds.length, items };
     }
     static async getUpcoming(userId, role, days = 14) {
         const until = new Date();
@@ -324,6 +377,15 @@ class MilkCollectionService {
         await record.destroy();
         return true;
     }
+    static async bulkDelete(ids, userId, role) {
+        const where = scopedIdWhere(ids, userId, role);
+        const existing = await milk_collection_model_1.default.findAll({ where, attributes: ['id'] });
+        const allowedIds = existing.map((e) => e.id);
+        if (!allowedIds.length)
+            return { ids: [], count: 0 };
+        const count = await milk_collection_model_1.default.destroy({ where: { id: { [sequelize_1.Op.in]: allowedIds } } });
+        return { ids: allowedIds, count };
+    }
 }
 exports.MilkCollectionService = MilkCollectionService;
 // ─── Knowledge Base ───────────────────────────────────────────
@@ -376,8 +438,8 @@ class PushTokenService {
             await record.update({ userId });
         return record;
     }
-    static async unregister(token) {
-        return push_token_model_1.default.destroy({ where: { token } });
+    static async unregister(token, userId) {
+        return push_token_model_1.default.destroy({ where: { token, userId } });
     }
     static async sendToUser(userId, title, body) {
         const tokens = await push_token_model_1.default.findAll({ where: { userId } });
@@ -410,6 +472,18 @@ class DeviceApiKeyService {
             return false;
         await key.update({ isActive: false });
         return true;
+    }
+    static async bulkRevoke(ids, userId) {
+        const uniqueIds = [...new Set(ids)];
+        const existing = await device_api_key_model_1.default.findAll({
+            where: { id: { [sequelize_1.Op.in]: uniqueIds }, userId },
+            attributes: ['id'],
+        });
+        const allowedIds = existing.map((e) => e.id);
+        if (!allowedIds.length)
+            return { ids: [], count: 0 };
+        const [count] = await device_api_key_model_1.default.update({ isActive: false }, { where: { id: { [sequelize_1.Op.in]: allowedIds }, userId } });
+        return { ids: allowedIds, count };
     }
     static async validate(apiKey) {
         const key = await device_api_key_model_1.default.findOne({ where: { apiKey, isActive: true } });

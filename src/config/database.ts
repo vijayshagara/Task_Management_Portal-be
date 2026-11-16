@@ -96,7 +96,7 @@ const sequelize = new Sequelize({
     acquire: 30000,
     idle: 10000,
   },
-  logging: config.NODE_ENV === 'development' ? console.log : false,
+  logging: false,
   retry: {
     max: 3,
   },

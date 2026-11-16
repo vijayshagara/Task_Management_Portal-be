@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FarmController = void 0;
 const auth_interface_1 = require("../interfaces/auth.interface");
 const farm_service_1 = require("../services/farm.service");
+const bulk_1 = require("../utils/bulk");
+const zod_1 = require("zod");
 function handleError(res, error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     const status = message.includes('not found') ? 404
@@ -56,6 +58,15 @@ class FarmController {
             handleError(res, e);
         }
     }
+    static async bulkDeleteDiary(req, res) {
+        try {
+            const ids = (0, bulk_1.parseBulkIds)(req.body);
+            res.json(await farm_service_1.FarmDiaryService.bulkDelete(ids, (0, auth_interface_1.getUserId)(req), req.user.role));
+        }
+        catch (e) {
+            handleError(res, e);
+        }
+    }
     // ─── Milk ───────────────────────────────────────────────────
     static async listMilk(req, res) {
         try {
@@ -83,6 +94,15 @@ class FarmController {
                 return;
             }
             res.json({ message: 'Deleted' });
+        }
+        catch (e) {
+            handleError(res, e);
+        }
+    }
+    static async bulkDeleteMilk(req, res) {
+        try {
+            const ids = (0, bulk_1.parseBulkIds)(req.body);
+            res.json(await farm_service_1.MilkRecordService.bulkDelete(ids, (0, auth_interface_1.getUserId)(req), req.user.role));
         }
         catch (e) {
             handleError(res, e);
@@ -144,6 +164,28 @@ class FarmController {
                 return;
             }
             res.json({ message: 'Deleted' });
+        }
+        catch (e) {
+            handleError(res, e);
+        }
+    }
+    static async bulkDeleteVaccinations(req, res) {
+        try {
+            const ids = (0, bulk_1.parseBulkIds)(req.body);
+            res.json(await farm_service_1.VaccinationService.bulkDelete(ids, (0, auth_interface_1.getUserId)(req), req.user.role));
+        }
+        catch (e) {
+            handleError(res, e);
+        }
+    }
+    static async bulkCompleteVaccinations(req, res) {
+        try {
+            const schema = zod_1.z.object({
+                ids: zod_1.z.array(zod_1.z.string().uuid()).min(1).max(500),
+                administeredDate: zod_1.z.string().optional(),
+            });
+            const { ids, administeredDate } = schema.parse(req.body);
+            res.json(await farm_service_1.VaccinationService.bulkComplete(ids, (0, auth_interface_1.getUserId)(req), req.user.role, administeredDate));
         }
         catch (e) {
             handleError(res, e);
@@ -235,6 +277,15 @@ class FarmController {
             handleError(res, e);
         }
     }
+    static async bulkDeleteCollections(req, res) {
+        try {
+            const ids = (0, bulk_1.parseBulkIds)(req.body);
+            res.json(await farm_service_1.MilkCollectionService.bulkDelete(ids, (0, auth_interface_1.getUserId)(req), req.user.role));
+        }
+        catch (e) {
+            handleError(res, e);
+        }
+    }
     // ─── Knowledge ──────────────────────────────────────────────
     static async listKnowledge(req, res) {
         try {
@@ -278,7 +329,7 @@ class FarmController {
     }
     static async unregisterPush(req, res) {
         try {
-            await farm_service_1.PushTokenService.unregister(req.body.token);
+            await farm_service_1.PushTokenService.unregister(req.body.token, (0, auth_interface_1.getUserId)(req));
             res.json({ message: 'Unregistered' });
         }
         catch (e) {
@@ -310,6 +361,15 @@ class FarmController {
                 return;
             }
             res.json({ message: 'Revoked' });
+        }
+        catch (e) {
+            handleError(res, e);
+        }
+    }
+    static async bulkRevokeDevices(req, res) {
+        try {
+            const ids = (0, bulk_1.parseBulkIds)(req.body);
+            res.json(await farm_service_1.DeviceApiKeyService.bulkRevoke(ids, (0, auth_interface_1.getUserId)(req)));
         }
         catch (e) {
             handleError(res, e);

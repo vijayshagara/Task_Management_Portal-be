@@ -10,6 +10,12 @@ const env_1 = __importDefault(require("./utils/env"));
 const google_service_1 = require("./services1/google.service");
 const mongodb_1 = require("./config/mongodb");
 const run_migrations_1 = require("./scripts/run-migrations");
+process.on("unhandledRejection", (reason) => {
+    console.error("Unhandled promise rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+    console.error("Uncaught exception:", err);
+});
 // Cron only on long-running servers (not Vercel serverless)
 if (!process.env.VERCEL) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

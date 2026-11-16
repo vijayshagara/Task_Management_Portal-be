@@ -10,11 +10,15 @@ const farmWrite = (0, auth_middleware_1.authMiddleware)(['admin', 'farmer']);
 router.get('/', auth, (req, res, next) => {
     health_record_controller_1.HealthRecordController.getAllHealthRecords(req, res).catch(next);
 });
-router.get('/:id', auth, (req, res, next) => {
-    health_record_controller_1.HealthRecordController.getHealthRecordById(req, res).catch(next);
-});
+// Cow-scoped list must be registered before /:id
 router.get('/cow/:cowId', auth, (req, res, next) => {
     health_record_controller_1.HealthRecordController.getHealthRecordsByCowId(req, res).catch(next);
+});
+router.post('/bulk-delete', farmWrite, (req, res, next) => {
+    health_record_controller_1.HealthRecordController.bulkDeleteHealthRecords(req, res).catch(next);
+});
+router.get('/:id', auth, (req, res, next) => {
+    health_record_controller_1.HealthRecordController.getHealthRecordById(req, res).catch(next);
 });
 router.post('/', farmWrite, (req, res, next) => {
     health_record_controller_1.HealthRecordController.createHealthRecord(req, res).catch(next);

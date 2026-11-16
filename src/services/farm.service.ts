@@ -433,7 +433,6 @@ export class PushTokenService {
     const tokens = await PushToken.findAll({ where: { userId } });
     // FCM integration stub — logs for now; wire Expo push or FCM in production
     for (const t of tokens) {
-      console.log(`[PUSH] → ${t.token}: ${title} — ${body}`);
     }
     return tokens.length;
   }

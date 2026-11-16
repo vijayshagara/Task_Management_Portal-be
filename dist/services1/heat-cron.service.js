@@ -42,50 +42,73 @@ const heat_schedules_model_1 = __importStar(require("../models/heat-schedules.mo
 const cow_model_1 = __importDefault(require("../models/cow.model"));
 const notification_service_1 = require("./notification.service");
 const env_1 = __importDefault(require("../utils/env"));
+const RETRY_FAILED_AFTER_MS = 5 * 60 * 1000;
+let running = false;
+/** Runs one delivery channel; a failure is logged but never blocks the other channels. */
+async function runChannel(name, cowId, fn) {
+    try {
+        await fn();
+        return true;
+    }
+    catch (err) {
+        console.error(`❌ ${name} failed | ${cowId} | ${err?.message || err}`);
+        return false;
+    }
+}
 node_cron_1.default.schedule('* * * * *', async () => {
-    console.log('⏰ Heat cron running...');
-    const schedules = await heat_schedules_model_1.default.findAll({
-        where: {
-            status: {
-                [sequelize_1.Op.in]: [
-                    heat_schedules_model_1.HeatScheduleStatus.SCHEDULED,
-                    heat_schedules_model_1.HeatScheduleStatus.FAILED,
-                ],
-            },
+    if (running)
+        return; // don't overlap with a slow previous run
+    running = true;
+    try {
+        console.log('⏰ Heat cron running...');
+        const retryBefore = new Date(Date.now() - RETRY_FAILED_AFTER_MS);
+        const dueFilter = {
             scheduledAt: { [sequelize_1.Op.lte]: new Date() },
-        },
-        include: [
-            {
-                model: cow_model_1.default,
-                as: 'cow',
-                attributes: ['name'],
-            },
-        ],
-        limit: 10,
-    });
-    for (const schedule of schedules) {
-        try {
-            // 🔒 Atomic update (prevents duplicate send)
-            const [updated] = await heat_schedules_model_1.default.update({ status: heat_schedules_model_1.HeatScheduleStatus.SENDING }, {
-                where: {
-                    id: schedule.id,
-                    status: heat_schedules_model_1.HeatScheduleStatus.SCHEDULED,
-                },
-            });
-            if (!updated)
-                continue;
-            await (0, notification_service_1.sendEmail)(schedule.cowId, schedule.cow.name ?? '', 'HEAT', schedule.alertDay);
-            await (0, notification_service_1.sendWhatsApp)(schedule.cowId, schedule.alertDay);
-            await (0, notification_service_1.sendSMS)(schedule.cowId, schedule.alertDay);
-            await (0, notification_service_1.sendPushNotification)(schedule.cowId, schedule.alertDay);
-            // await createGoogleMeetForUser(schedule.cowId, "schedule.refreshToken as any", schedule.alertDay);
-            await (0, notification_service_1.createGoogleMeetForUser)(schedule.cowId, env_1.default.GOOGLE_REFRESH_TOKEN, schedule.alertDay);
-            await schedule.update({ status: heat_schedules_model_1.HeatScheduleStatus.SENT });
-            console.log(`✅ Heat alert sent | ${schedule.cowId}`);
+            [sequelize_1.Op.or]: [
+                { status: heat_schedules_model_1.HeatScheduleStatus.SCHEDULED },
+                // Failed reminders are retried, but not every minute.
+                { status: heat_schedules_model_1.HeatScheduleStatus.FAILED, updatedAt: { [sequelize_1.Op.lte]: retryBefore } },
+            ],
+        };
+        const schedules = await heat_schedules_model_1.default.findAll({
+            where: dueFilter,
+            include: [{ model: cow_model_1.default, as: 'cow', attributes: ['name'] }],
+            limit: 10,
+        });
+        for (const schedule of schedules) {
+            try {
+                // 🔒 Atomic claim (prevents duplicate sends across instances)
+                const [claimed] = await heat_schedules_model_1.default.update({ status: heat_schedules_model_1.HeatScheduleStatus.SENDING }, { where: { id: schedule.id, ...dueFilter } });
+                if (!claimed)
+                    continue;
+                const { cowId, alertDay } = schedule;
+                const cowName = schedule.cow?.name ?? '';
+                const results = await Promise.all([
+                    runChannel('Email', cowId, () => (0, notification_service_1.sendEmail)(cowId, cowName, 'HEAT', alertDay)),
+                    runChannel('WhatsApp', cowId, () => (0, notification_service_1.sendWhatsApp)(cowId, alertDay)),
+                    runChannel('SMS', cowId, () => (0, notification_service_1.sendSMS)(cowId, alertDay)),
+                    runChannel('Push', cowId, () => (0, notification_service_1.sendPushNotification)(cowId, alertDay)),
+                    runChannel('Google Meet', cowId, () => (0, notification_service_1.createGoogleMeetForUser)(cowId, env_1.default.GOOGLE_REFRESH_TOKEN, alertDay)),
+                ]);
+                // Sent if at least one channel got through; failed only when everything failed.
+                const delivered = results.some(Boolean);
+                await schedule.update({
+                    status: delivered ? heat_schedules_model_1.HeatScheduleStatus.SENT : heat_schedules_model_1.HeatScheduleStatus.FAILED,
+                });
+                console.log(delivered
+                    ? `✅ Heat alert sent | ${cowId} | day ${alertDay} (${results.filter(Boolean).length}/${results.length} channels)`
+                    : `❌ Heat alert failed on every channel | ${cowId} | day ${alertDay}`);
+            }
+            catch (err) {
+                console.error('❌ Heat alert failed', err);
+                await schedule.update({ status: heat_schedules_model_1.HeatScheduleStatus.FAILED });
+            }
         }
-        catch (err) {
-            console.error('❌ Heat alert failed', err);
-            await schedule.update({ status: heat_schedules_model_1.HeatScheduleStatus.FAILED });
-        }
+    }
+    catch (err) {
+        console.error('❌ Heat cron error', err);
+    }
+    finally {
+        running = false;
     }
 });

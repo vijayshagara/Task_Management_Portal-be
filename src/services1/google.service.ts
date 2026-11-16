@@ -7,7 +7,6 @@ let oauth2Client: any = null;
 function initializeGoogleOAuth() {
   // Only initialize if all required credentials are present
   if (!config.GOOGLE_CLIENT_ID || !config.GOOGLE_CLIENT_SECRET || !config.GOOGLE_REDIRECT_URI) {
-    console.warn("⚠️ Google OAuth credentials not found. Google Calendar features disabled.");
     return false;
   }
 
@@ -38,7 +37,6 @@ export { oauth2Client, calendar, googleInitialized };
 
 export async function listEvents() {
   if (!googleInitialized || !calendar) {
-    console.warn("⚠️ Google Calendar not initialized");
     return [];
   }
 
@@ -54,23 +52,17 @@ export async function listEvents() {
     const events = result.data.items || [];
 
     if (events.length === 0) {
-      console.log("ℹ️ No upcoming events found.");
       return [];
     }
 
-    console.log("📅 Upcoming 10 events:");
     events.forEach((event: any) => {
       const start = event.start?.dateTime ?? event.start?.date;
-      console.log(`  ${start} - ${event.summary}`);
     });
 
     return events;
   } catch (error: any) {
     if (error.message?.includes("invalid_grant")) {
-      console.warn("⚠️ Google refresh token expired or invalid");
-      console.warn("💡 Generate a new token: http://localhost:5000/generate-token");
     } else {
-      console.warn("⚠️ Google API Error:", error.message);
     }
     return [];
   }

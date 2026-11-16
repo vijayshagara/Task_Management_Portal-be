@@ -48,14 +48,11 @@ async function migrate() {
 
       const newRef = `${PG_PREFIX}${blob.id}`;
       await cow.update({ image: newRef });
-      console.log(`✓ Migrated ${cow.name} (${cow.id}) → ${newRef}`);
       migrated += 1;
     } catch (err: any) {
-      console.warn(`✗ Skipped ${cow.name}: ${err.message}`);
     }
   }
 
-  console.log(`\nDone. Migrated ${migrated} cow image(s).`);
   await sequelize.close();
   await closeMongo();
 }

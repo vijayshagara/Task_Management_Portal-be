@@ -42,6 +42,7 @@ const cow_model_1 = require("../models/cow.model");
 const heat_schedules_model_1 = __importDefault(require("../models/heat-schedules.model"));
 const heat_scheduler_service_1 = require("./heat-scheduler.service");
 const zod_1 = require("zod");
+const sequelize_1 = require("sequelize");
 const database_1 = __importDefault(require("../config/database"));
 class HeatCycleService {
     // --------------------
@@ -139,6 +140,20 @@ class HeatCycleService {
         });
         return deletedCount > 0;
     }
+    static async bulkDeleteHeatCycles(ids) {
+        const uniqueIds = [...new Set(ids)];
+        const count = await database_1.default.transaction(async (transaction) => {
+            await heat_schedules_model_1.default.destroy({
+                where: { heatCycleId: { [sequelize_1.Op.in]: uniqueIds } },
+                transaction,
+            });
+            return heat_cycle_model_1.default.destroy({
+                where: { id: { [sequelize_1.Op.in]: uniqueIds } },
+                transaction,
+            });
+        });
+        return { ids: uniqueIds, count };
+    }
     // --------------------
     // CONFIRM HEAT
     // --------------------
@@ -159,6 +174,43 @@ class HeatCycleService {
                 transaction,
             });
             return true;
+        });
+    }
+    static async bulkConfirmHeat(ids) {
+        const uniqueIds = [...new Set(ids)];
+        return database_1.default.transaction(async (transaction) => {
+            const pending = await heat_cycle_model_1.default.findAll({
+                where: {
+                    id: { [sequelize_1.Op.in]: uniqueIds },
+                    status: heat_cycle_model_1.HeatCycleStatus.PENDING,
+                },
+                attributes: ['id'],
+                transaction,
+            });
+            const confirmIds = pending.map((c) => c.id);
+            if (!confirmIds.length)
+                return { ids: [], count: 0, items: [] };
+            const now = new Date();
+            await heat_cycle_model_1.default.update({
+                status: heat_cycle_model_1.HeatCycleStatus.CONFIRMED,
+                confirmedAt: now,
+            }, {
+                where: { id: { [sequelize_1.Op.in]: confirmIds } },
+                transaction,
+            });
+            await heat_schedules_model_1.default.update({ status: 'CANCELLED' }, {
+                where: {
+                    heatCycleId: { [sequelize_1.Op.in]: confirmIds },
+                    status: 'SCHEDULED',
+                },
+                transaction,
+            });
+            const items = await heat_cycle_model_1.default.findAll({
+                where: { id: { [sequelize_1.Op.in]: confirmIds } },
+                include: [{ model: cow_model_1.Cow, attributes: ['id', 'name', 'breed'] }],
+                transaction,
+            });
+            return { ids: confirmIds, count: confirmIds.length, items };
         });
     }
 }

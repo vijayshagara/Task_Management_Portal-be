@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HeatCycleController = void 0;
 const heat_cycle_service_1 = require("../services/heat-cycle.service");
+const bulk_1 = require("../utils/bulk");
 class HeatCycleController {
     static async getAllHeatCycles(req, res) {
         try {
@@ -69,6 +70,16 @@ class HeatCycleController {
             res.status(500).json({ message: error.message });
         }
     }
+    static async bulkDeleteHeatCycles(req, res) {
+        try {
+            const ids = (0, bulk_1.parseBulkIds)(req.body);
+            const result = await heat_cycle_service_1.HeatCycleService.bulkDeleteHeatCycles(ids);
+            res.json(result);
+        }
+        catch (error) {
+            res.status(400).json({ message: error.message });
+        }
+    }
     static async confirmHeat(req, res) {
         try {
             const result = await heat_cycle_service_1.HeatCycleService.confirmHeat(req.params.id);
@@ -82,6 +93,16 @@ class HeatCycleController {
         }
         catch (error) {
             res.status(500).json({ message: error.message });
+        }
+    }
+    static async bulkConfirmHeat(req, res) {
+        try {
+            const ids = (0, bulk_1.parseBulkIds)(req.body);
+            const result = await heat_cycle_service_1.HeatCycleService.bulkConfirmHeat(ids);
+            res.json(result);
+        }
+        catch (error) {
+            res.status(400).json({ message: error.message });
         }
     }
 }

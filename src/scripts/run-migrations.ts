@@ -12,7 +12,6 @@ export async function runMigrations(): Promise<void> {
 
   // Run as a single query batch; statements use IF NOT EXISTS
   await sequelize.query(sql);
-  console.log('✅ Database migrations applied');
 }
 
 if (require.main === module) {

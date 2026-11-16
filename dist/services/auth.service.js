@@ -39,11 +39,7 @@ class AuthService {
         await refresh_token_model_1.default.create({ userId, token, expiresAt });
         return token;
     }
-    // --------------------
-    // REGISTER
-    // --------------------
-    static async register(userData) {
-        const validatedData = this.userSchema.parse(userData);
+    static async createUserAccount(validatedData) {
         const existingUser = await user_model_1.User.findOne({
             where: { email: validatedData.email },
         });
@@ -70,9 +66,25 @@ class AuthService {
             farmName: `${validatedData.name}'s Farm`,
         });
         await user_settings_model_1.default.create({ userId: user.id });
-        // Remove password before returning
         const { password, ...safeUser } = user.get({ plain: true });
         return safeUser;
+    }
+    // --------------------
+    // REGISTER (public — always farmer)
+    // --------------------
+    static async register(userData) {
+        const validatedData = this.userSchema.parse({
+            ...userData,
+            role: 'farmer',
+        });
+        return this.createUserAccount(validatedData);
+    }
+    // --------------------
+    // ADMIN CREATE USER (privileged roles allowed)
+    // --------------------
+    static async createUserAsAdmin(userData) {
+        const validatedData = this.adminCreateSchema.parse(userData);
+        return this.createUserAccount(validatedData);
     }
     // --------------------
     // LOGIN
@@ -178,7 +190,17 @@ class AuthService {
         if (!valid)
             throw new Error('Current password is incorrect');
         await user.update({ password: await bcryptjs_1.default.hash(validated.newPassword, SALT_ROUNDS) });
+        await refresh_token_model_1.default.destroy({ where: { userId: user.id } });
         return { message: 'Password changed successfully' };
+    }
+    static async logout(refreshToken, userId) {
+        if (refreshToken) {
+            await refresh_token_model_1.default.destroy({ where: { token: refreshToken } });
+        }
+        else if (userId) {
+            await refresh_token_model_1.default.destroy({ where: { userId } });
+        }
+        return { message: 'Logged out successfully' };
     }
     // --------------------
     // VERIFY TOKEN
@@ -200,8 +222,32 @@ AuthService.userSchema = zod_1.z.object({
     name: zod_1.z.string().min(3),
     email: zod_1.z.string().email(),
     password: zod_1.z.string().min(6),
+    // Public registration never trusts client-supplied privileged roles
+    role: zod_1.z.enum(['farmer']).default('farmer'),
+    username: zod_1.z
+        .preprocess((val) => (typeof val === 'string'
+        ? val.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
+        : val) || undefined, zod_1.z
+        .string()
+        .min(3, 'Username must be at least 3 characters')
+        .max(30, 'Username must be at most 30 characters')
+        .regex(/^[a-zA-Z0-9_.-]+$/, 'Username can only contain letters, numbers, underscores, dots and hyphens')
+        .optional()),
+});
+AuthService.adminCreateSchema = zod_1.z.object({
+    name: zod_1.z.string().min(3),
+    email: zod_1.z.string().email(),
+    password: zod_1.z.string().min(6),
     role: zod_1.z.enum(['admin', 'developer', 'farmer']).default('farmer'),
-    username: zod_1.z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
+    username: zod_1.z
+        .preprocess((val) => (typeof val === 'string'
+        ? val.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
+        : val) || undefined, zod_1.z
+        .string()
+        .min(3, 'Username must be at least 3 characters')
+        .max(30, 'Username must be at most 30 characters')
+        .regex(/^[a-zA-Z0-9_.-]+$/, 'Username can only contain letters, numbers, underscores, dots and hyphens')
+        .optional()),
 });
 AuthService.loginSchema = zod_1.z.object({
     email: zod_1.z.string().email(),

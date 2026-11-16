@@ -280,7 +280,6 @@ export class AuthService {
 
     const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[PASSWORD RESET] Link for ${validEmail}: ${resetLink}`);
     }
 
     return { message: 'If the email exists, a reset link has been sent', ...(process.env.NODE_ENV === 'development' ? { token } : {}) };

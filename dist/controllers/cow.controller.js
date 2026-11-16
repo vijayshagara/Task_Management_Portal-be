@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CowController = void 0;
 const cow_service_1 = require("../services/cow.service");
 const cow_image_service_1 = require("../services/cow-image.service");
+const bulk_1 = require("../utils/bulk");
 class CowController {
     static async getAllCows(req, res) {
         try {
@@ -60,6 +61,16 @@ class CowController {
         }
         catch (error) {
             res.status(500).json({ message: error.message });
+        }
+    }
+    static async bulkDeleteCows(req, res) {
+        try {
+            const ids = (0, bulk_1.parseBulkIds)(req.body);
+            const result = await cow_service_1.CowService.bulkDeleteCows(ids, req.user?.id, req.user?.role);
+            res.json(result);
+        }
+        catch (error) {
+            res.status(400).json({ message: error.message });
         }
     }
     static async uploadCowImage(req, res) {

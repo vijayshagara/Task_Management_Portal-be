@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CowService = void 0;
 const cow_model_1 = require("../models/cow.model");
 const zod_1 = require("zod");
+const sequelize_1 = require("sequelize");
 const database_1 = __importDefault(require("../config/database"));
 const cow_image_service_1 = require("./cow-image.service");
 const health_record_model_1 = __importDefault(require("../models/health-record.model"));
@@ -77,6 +78,43 @@ class CowService {
             });
         });
         return deletedCount > 0;
+    }
+    static async bulkDeleteCows(ids, userId, role) {
+        const uniqueIds = [...new Set(ids)];
+        const where = {
+            id: { [sequelize_1.Op.in]: uniqueIds },
+            ...(role && userId ? (0, farm_access_1.cowScopeWhere)(userId, role) : {}),
+        };
+        const cows = await cow_model_1.Cow.findAll({ where, attributes: ['id', 'image'] });
+        const allowedIds = cows.map((c) => c.id);
+        if (!allowedIds.length)
+            return { ids: [], count: 0 };
+        await Promise.all(cows
+            .filter((c) => c.image)
+            .map((c) => cow_image_service_1.CowImageService.deleteByFileId(c.image).catch(() => { })));
+        const count = await database_1.default.transaction(async (transaction) => {
+            await heat_schedules_model_1.default.destroy({
+                where: { cowId: { [sequelize_1.Op.in]: allowedIds } },
+                transaction,
+            });
+            await heat_cycle_model_1.default.destroy({
+                where: { cowId: { [sequelize_1.Op.in]: allowedIds } },
+                transaction,
+            });
+            await health_record_model_1.default.destroy({
+                where: { cowId: { [sequelize_1.Op.in]: allowedIds } },
+                transaction,
+            });
+            await cow_health_status_model_1.default.destroy({
+                where: { cowId: { [sequelize_1.Op.in]: allowedIds } },
+                transaction,
+            });
+            return cow_model_1.Cow.destroy({
+                where: { id: { [sequelize_1.Op.in]: allowedIds } },
+                transaction,
+            });
+        });
+        return { ids: allowedIds, count };
     }
 }
 exports.CowService = CowService;

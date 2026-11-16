@@ -17,7 +17,14 @@ const block_model_1 = __importDefault(require("../models/block.model"));
 const social_media_service_1 = require("./social-media.service");
 const updateProfileSchema = zod_1.z.object({
     name: zod_1.z.string().min(2).optional(),
-    username: zod_1.z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
+    username: zod_1.z.preprocess((val) => (typeof val === 'string'
+        ? val.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
+        : val) || undefined, zod_1.z
+        .string()
+        .min(3, 'Username must be at least 3 characters')
+        .max(30, 'Username must be at most 30 characters')
+        .regex(/^[a-zA-Z0-9_.-]+$/, 'Username can only contain letters, numbers, underscores, dots and hyphens')
+        .optional()),
     bio: zod_1.z.string().max(500).optional(),
     farmName: zod_1.z.string().max(100).optional(),
     location: zod_1.z.string().max(100).optional(),

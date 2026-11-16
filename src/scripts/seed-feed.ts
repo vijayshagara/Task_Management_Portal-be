@@ -116,13 +116,11 @@ async function linkExistingUsersToSeed(seedUsers: User[]) {
   }
 
   if (realUsers.length) {
-    console.log(`Linked ${realUsers.length} existing user(s) to follow seed farmers`);
   }
 }
 
 async function seedFeed() {
   await sequelize.authenticate();
-  console.log('Connected to database');
 
   const password = await bcrypt.hash('password123', 10);
   const createdUsers: User[] = [];
@@ -138,9 +136,7 @@ async function seedFeed() {
         password,
         role: UserRole.FARMER,
       });
-      console.log(`Created user: ${farmer.name}`);
     } else {
-      console.log(`User exists: ${farmer.name}`);
     }
 
     await UserProfile.findOrCreate({
@@ -180,11 +176,7 @@ async function seedFeed() {
   });
 
   if (seedPostCount > 0) {
-    console.log(`Seed posts already exist (${seedPostCount}). Ensuring follows for existing users...`);
     await linkExistingUsersToSeed(createdUsers);
-    console.log('\nDummy login (any seeded user):');
-    console.log(`  Email: ramesh_dairy${SEED_EMAIL_DOMAIN}`);
-    console.log('  Password: password123');
     await sequelize.close();
     return;
   }
@@ -200,7 +192,6 @@ async function seedFeed() {
       hashtags: postData.hashtags,
     });
     createdPosts.push(post);
-    console.log(`Created post by ${author.name}`);
   }
 
   // Likes
@@ -235,12 +226,6 @@ async function seedFeed() {
     }
   }
 
-  console.log('\n✅ Dummy feed data inserted successfully!');
-  console.log('\nTest login credentials:');
-  console.log(`  Email: ramesh_dairy${SEED_EMAIL_DOMAIN}`);
-  console.log('  Password: password123');
-  console.log('\nOther seeded users: sunita_farm, vijay_cattle, lakshmi_dairy @ seed-feed.test');
-  console.log('\nTo remove later: npm run seed:feed:clear');
 
   await sequelize.close();
 }
@@ -255,7 +240,6 @@ async function clearSeedFeed() {
   const seedUserIds = seedUsers.map((u) => u.id);
 
   if (!seedUserIds.length) {
-    console.log('No seed users found.');
     await sequelize.close();
     return;
   }
@@ -269,7 +253,6 @@ async function clearSeedFeed() {
     await Comment.destroy({ where: { postId: { [Op.in]: seedPostIds } } });
     await PostLike.destroy({ where: { postId: { [Op.in]: seedPostIds } } });
     await Post.destroy({ where: { id: { [Op.in]: seedPostIds } } });
-    console.log(`Deleted ${seedPostIds.length} seed posts`);
   }
 
   await Follow.destroy({
@@ -285,8 +268,6 @@ async function clearSeedFeed() {
   await UserProfile.destroy({ where: { userId: { [Op.in]: seedUserIds } } });
   await User.destroy({ where: { id: { [Op.in]: seedUserIds } } });
 
-  console.log(`Deleted ${seedUserIds.length} seed users`);
-  console.log('✅ Seed feed data cleared');
 
   await sequelize.close();
 }

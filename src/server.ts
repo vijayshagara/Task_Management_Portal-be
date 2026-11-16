@@ -7,6 +7,13 @@ import { createMeeting } from "./services1/google.service";
 import { connectMongo, closeMongo } from "./config/mongodb";
 import { runMigrations } from "./scripts/run-migrations";
 
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+});
+
 // Cron only on long-running servers (not Vercel serverless)
 if (!process.env.VERCEL) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -19,7 +26,6 @@ const RETRY_DELAY_MS = 2000;
 async function connectDatabase(retries = 0): Promise<boolean> {
   try {
     await sequelize.authenticate();
-    console.log("✅ Database connected successfully");
     return true;
   } catch (error: any) {
     const isLastRetry = retries >= MAX_RETRIES - 1;
@@ -35,7 +41,6 @@ async function connectDatabase(retries = 0): Promise<boolean> {
       return false;
     }
 
-    console.log(`⏳ Retrying in ${RETRY_DELAY_MS}ms...`);
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
     return connectDatabase(retries + 1);
   }
@@ -47,9 +52,8 @@ async function syncDatabase() {
     await runMigrations();
 
     // Dev-only: Sequelize alter sync for local iteration
-    if (config.NODE_ENV !== "production" && !process.env.VERCEL) {
+    if (process.env.DB_SYNC_ALTER === "true" && config.NODE_ENV !== "production" && !process.env.VERCEL) {
       await sequelize.sync({ alter: true });
-      console.log("✅ Database schema synchronized (dev alter)");
     }
   } catch (error: any) {
     console.error("❌ Database sync failed:", error.message);
@@ -59,19 +63,16 @@ async function syncDatabase() {
 
 async function initializeGoogleAPI() {
   if (!googleInitialized) {
-    console.log("ℹ️ Google Calendar features disabled - credentials not configured");
     return;
   }
 
-  console.log("📅 Fetching Google Calendar events...");
   await listEvents();
 }
 
 async function startServer() {
   return new Promise<void>((resolve, reject) => {
     const server = app.listen(config.PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${config.PORT}`);
-      console.log(`📊 Environment: ${config.NODE_ENV}`);
+      console.log(`🚀 Backend started on port ${config.PORT}`);
       resolve();
     });
 
@@ -81,7 +82,6 @@ async function startServer() {
 
 async function initialize() {
   try {
-    console.log("🔧 Initializing application...\n");
 
     // Step 1: Connect to database
     const dbConnected = await connectDatabase();
@@ -101,7 +101,6 @@ async function initialize() {
     // Step 5: Start server
     await startServer();
 
-    console.log("\n✨ Application ready!");
 
   } catch (error: any) {
     console.error("\n❌ Application initialization failed:");
@@ -116,14 +115,12 @@ async function initialize() {
 
 // Handle graceful shutdown
 process.on("SIGTERM", async () => {
-  console.log("\n🛑 SIGTERM received, shutting down gracefully...");
   await sequelize.close();
   await closeMongo();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
-  console.log("\n🛑 SIGINT received, shutting down gracefully...");
   await sequelize.close();
   await closeMongo();
   process.exit(0);

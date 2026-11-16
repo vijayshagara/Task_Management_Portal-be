@@ -10,6 +10,9 @@ const farmWrite = (0, auth_middleware_1.authMiddleware)(['admin', 'farmer']);
 router.get('/', auth, (req, res, next) => {
     cow_controller_1.CowController.getAllCows(req, res).catch(next);
 });
+router.post('/bulk-delete', farmWrite, (req, res, next) => {
+    cow_controller_1.CowController.bulkDeleteCows(req, res).catch(next);
+});
 router.get('/:id/image', (req, res, next) => {
     cow_controller_1.CowController.getCowImage(req, res).catch(next);
 });

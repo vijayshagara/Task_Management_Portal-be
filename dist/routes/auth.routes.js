@@ -10,4 +10,5 @@ router.post('/refresh', (req, res) => auth_controller_1.AuthController.refresh(r
 router.post('/forgot-password', (req, res) => auth_controller_1.AuthController.forgotPassword(req, res));
 router.post('/reset-password', (req, res) => auth_controller_1.AuthController.resetPassword(req, res));
 router.post('/change-password', (0, auth_middleware_1.authMiddleware)([]), (req, res) => auth_controller_1.AuthController.changePassword(req, res));
+router.post('/logout', (0, auth_middleware_1.authMiddleware)([]), (req, res) => auth_controller_1.AuthController.logout(req, res));
 exports.default = router;

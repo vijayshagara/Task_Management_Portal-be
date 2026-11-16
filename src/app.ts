@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { oauth2Client } from "./services1/google.service";
 import config from "./utils/env";
 
@@ -17,6 +19,9 @@ import farmRoutes from './routes/farm.routes';
 import { ensureDbReady } from './config/init-db';
 
 const app = express();
+
+// Behind Railway / Vercel / Netlify proxies — needed so rate limiting sees the real client IP.
+app.set('trust proxy', 1);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
@@ -27,6 +32,8 @@ const allowedOrigins = [
   "https://task-management-portal-be.vercel.app",
   "https://toral-cattle-farm.netlify.app",
   "https://toral-cattle-farm.netlify.app/",
+  // Extra origins for new deployments, e.g. CORS_ORIGINS=https://my-app.up.railway.app,https://example.com
+  ...(process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
 ];
 
 /** Vite may bind 5173+ when multiple instances run; allow local dev hosts. */
@@ -72,7 +79,29 @@ app.options(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+// Security headers (images are served cross-origin to the web/mobile apps).
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
 app.use(express.json({ limit: '10mb' }));
+
+// Brute-force protection for credential endpoints.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message: 'Too many attempts. Please try again in a few minutes.' },
+});
+app.use(['/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/reset-password'], authLimiter);
+
+// General API limiter (generous; protects against runaway clients).
+app.use('/api', rateLimit({
+  windowMs: 60 * 1000,
+  limit: 300,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message: 'Too many requests. Please slow down.' },
+}));
 
 // Ensure DB schema is up to date (fixes missing columns on Vercel production)
 app.use(async (_req, res, next) => {
@@ -108,9 +137,19 @@ app.get('/health', (_, res) => {
 });
 
 // --------------------
-// Error handling (enable later)
+// Error handling
 // --------------------
-// app.use(errorHandler);
+app.use('/api', (_req, res) => {
+  res.status(404).json({ message: 'Not found' });
+});
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Unhandled error:', err?.message || err);
+  if (res.headersSent) return;
+  const status = err?.status || err?.statusCode || 500;
+  res.status(status).json({ message: status >= 500 ? 'Internal server error' : err.message });
+});
 
 // Google OAuth helper routes — disabled in production
 if (config.NODE_ENV !== 'production') {
@@ -157,14 +196,6 @@ if (config.NODE_ENV !== 'production') {
         return res.status(400).send("Failed to obtain refresh token");
       }
 
-      console.log("\n");
-      console.log("═".repeat(60));
-      console.log("🔥 REFRESH TOKEN GENERATED SUCCESSFULLY 🔥");
-      console.log("═".repeat(60));
-      console.log("\n📋 Add this to your .env file:\n");
-      console.log(`GOOGLE_REFRESH_TOKEN=${tokens.refresh_token}\n`);
-      console.log("═".repeat(60));
-      console.log("\n");
 
       res.send(`
         <h1>Success</h1>

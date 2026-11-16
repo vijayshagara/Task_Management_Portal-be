@@ -1,8 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
+const zod_1 = require("zod");
 const auth_service_1 = require("../services/auth.service");
 const auth_interface_1 = require("../interfaces/auth.interface");
+function errorMessage(error) {
+    if (error instanceof zod_1.ZodError) {
+        return error.issues.map((issue) => issue.message).join('; ');
+    }
+    return error.message;
+}
 class AuthController {
     static async register(req, res) {
         try {
@@ -10,7 +17,7 @@ class AuthController {
             res.status(201).json(user);
         }
         catch (error) {
-            res.status(400).json({ message: error.message });
+            res.status(400).json({ message: errorMessage(error) });
         }
     }
     static async login(req, res) {
@@ -19,7 +26,7 @@ class AuthController {
             res.json({ token: result.token, refreshToken: result.refreshToken, user: result.user });
         }
         catch (error) {
-            res.status(401).json({ message: error.message });
+            res.status(401).json({ message: errorMessage(error) });
         }
     }
     static async refresh(req, res) {
@@ -28,7 +35,7 @@ class AuthController {
             res.json(result);
         }
         catch (error) {
-            res.status(401).json({ message: error.message });
+            res.status(401).json({ message: errorMessage(error) });
         }
     }
     static async forgotPassword(req, res) {
@@ -37,7 +44,7 @@ class AuthController {
             res.json(result);
         }
         catch (error) {
-            res.status(400).json({ message: error.message });
+            res.status(400).json({ message: errorMessage(error) });
         }
     }
     static async resetPassword(req, res) {
@@ -46,7 +53,7 @@ class AuthController {
             res.json(result);
         }
         catch (error) {
-            res.status(400).json({ message: error.message });
+            res.status(400).json({ message: errorMessage(error) });
         }
     }
     static async changePassword(req, res) {
@@ -55,7 +62,16 @@ class AuthController {
             res.json(result);
         }
         catch (error) {
-            res.status(400).json({ message: error.message });
+            res.status(400).json({ message: errorMessage(error) });
+        }
+    }
+    static async logout(req, res) {
+        try {
+            const result = await auth_service_1.AuthService.logout(req.body.refreshToken, req.user?.id);
+            res.json(result);
+        }
+        catch (error) {
+            res.status(400).json({ message: errorMessage(error) });
         }
     }
 }
